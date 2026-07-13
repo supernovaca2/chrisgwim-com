@@ -4,6 +4,9 @@ import { getCollection } from 'astro:content';
 const releases = (await getCollection('releases')).sort(
   (a, b) => b.data.datePublished.localeCompare(a.data.datePublished)
 );
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
 ---
 <section class="section" aria-labelledby="tracklist-h">
   <div class="section-head">
@@ -12,13 +15,13 @@ const releases = (await getCollection('releases')).sort(
   </div>
   <div class="tracklist">
     {releases.map((release, i) => (
-      <a class="track-row" href={release.data.primaryUrl} target="_blank" rel="noopener">
+      <a class="track-row" href={`${base}music/${release.id}/`}>
         <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
         <span class="track-title">
           {release.data.title}
           {i === 0 && <span class="track-latest">NEW</span>}
         </span>
-        <span class="track-link">open ↗</span>
+        <span class="track-link">view →</span>
       </a>
     ))}
   </div>

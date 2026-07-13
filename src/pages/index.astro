@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import ChannelStrip from '../components/ChannelStrip.astro';
 import TrackList from '../components/TrackList.astro';
 import Outputs from '../components/Outputs.astro';
+import Promo from '../components/Promo.astro';
 import { getCollection } from 'astro:content';
 
 const releases = (await getCollection('releases')).sort(
@@ -31,6 +32,7 @@ const latest = releases[0];
   <ChannelStrip />
   <TrackList />
   <Outputs />
+  <Promo />
 </Base>
 
 <style>
