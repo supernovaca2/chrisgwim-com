@@ -1,9 +1,8 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 
-// Preview deploy: GitHub Pages project site.
-// At domain cutover (chrisgwim.com): change site to 'https://chrisgwim.com' and remove base.
+// Serving the apex domain. (Preview-era config used the github.io URL with
+// base '/chrisgwim-com' — changed at domain cutover 2026-07-13.)
 export default defineConfig({
-  site: 'https://supernovaca2.github.io',
-  base: '/chrisgwim-com',
+  site: 'https://chrisgwim.com',
 });
