@@ -1,0 +1,46 @@
+---
+interface Props {
+  session?: string;
+}
+const { session = 'CHRISGWIM.COM' } = Astro.props;
+---
+<header class="transport">
+  <div class="transport-left">
+    <span class="rec-dot" aria-hidden="true"></span>
+    SESSION: {session}
+  </div>
+  <div class="transport-right">
+    <span>128 BPM</span>
+    <span>A MIN</span>
+    <span>44.1K / 24B</span>
+  </div>
+</header>
+
+<style>
+  .transport {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+  }
+  .transport-left { display: flex; align-items: center; gap: 10px; }
+  .rec-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 0 2px rgba(192, 69, 61, 0.18);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .rec-dot { animation: pulse 2.2s ease-in-out infinite; }
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .transport-right { display: flex; gap: 18px; }
+  @media (max-width: 480px) {
+    .transport-right { gap: 10px; }
+  }
+</style>

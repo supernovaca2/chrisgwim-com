@@ -1,0 +1,57 @@
+---
+interface Props {
+  label?: string;
+}
+const { label = 'CH 01 — MAIN OUT' } = Astro.props;
+const playerSrc =
+  'https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fchrisgwim' +
+  '&color=%23e2a33f&auto_play=false&hide_related=true&show_comments=false' +
+  '&show_user=true&show_reposts=false&show_teaser=false&visual=false';
+---
+<div class="strip">
+  <div class="strip-label">
+    <span>{label}</span>
+    <span class="live">● LIVE</span>
+  </div>
+  <div class="strip-body">
+    <div class="player-shell">
+      <iframe
+        height="166"
+        scrolling="no"
+        frameborder="no"
+        allow="autoplay"
+        loading="lazy"
+        title="Chris Gwim on SoundCloud"
+        src={playerSrc}></iframe>
+    </div>
+  </div>
+</div>
+
+<style>
+  .strip {
+    margin: 0 0 28px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .strip-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dimmer);
+  }
+  .strip-label .live { color: var(--red); }
+  .strip-body { padding: 14px; }
+  .player-shell {
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--line-faint);
+  }
+  .player-shell iframe { display: block; width: 100%; border: 0; }
+</style>

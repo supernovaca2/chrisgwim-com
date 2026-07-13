@@ -1,0 +1,122 @@
+---
+import Base from '../layouts/Base.astro';
+import ChannelStrip from '../components/ChannelStrip.astro';
+import TrackList from '../components/TrackList.astro';
+import Outputs from '../components/Outputs.astro';
+import { getCollection } from 'astro:content';
+
+const releases = (await getCollection('releases')).sort(
+  (a, b) => b.data.datePublished.localeCompare(a.data.datePublished)
+);
+const latest = releases[0];
+---
+<Base
+  title="Chris Gwim — Music Producer"
+  description="Chris Gwim — electronic, melodic techno, and EDM producer. Latest release and full catalog, live from SoundCloud."
+>
+  <section class="hero">
+    <div class="dial" aria-hidden="true"><div class="dial-ticks"></div></div>
+    <div class="hero-content">
+      <p class="kicker">Producer · Electronic / Melodic Techno / EDM</p>
+      <h1 class="wordmark">Chris <em>Gwim</em></h1>
+      <p class="tagline">catalog log — nine singles, one series in progress</p>
+      <div class="spec-row">
+        <span class="spec">STATUS <b>LIVE ON SOUNDCLOUD</b></span>
+        <span class="spec">RELEASES <b>{String(releases.length).padStart(2, '0')}</b></span>
+        <span class="spec">LATEST <b>{latest.data.title.toUpperCase()}</b></span>
+      </div>
+    </div>
+  </section>
+
+  <ChannelStrip />
+  <TrackList />
+  <Outputs />
+</Base>
+
+<style>
+  .hero {
+    position: relative;
+    padding: 56px 12px 40px;
+    text-align: center;
+    overflow: hidden;
+  }
+  .dial {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 640px;
+    height: 640px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px solid rgba(226, 163, 63, 0.08);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .dial::before {
+    content: "";
+    position: absolute;
+    inset: 70px;
+    border-radius: 50%;
+    border: 1px solid rgba(226, 163, 63, 0.07);
+  }
+  .dial::after {
+    content: "";
+    position: absolute;
+    inset: 140px;
+    border-radius: 50%;
+    border: 1px solid rgba(226, 163, 63, 0.06);
+  }
+  .dial-ticks {
+    position: absolute;
+    inset: 0;
+    background: repeating-conic-gradient(rgba(226, 163, 63, 0.10) 0deg 1deg, transparent 1deg 15deg);
+    -webkit-mask: radial-gradient(circle, transparent 60%, black 61%, black 63%, transparent 64%);
+    mask: radial-gradient(circle, transparent 60%, black 61%, black 63%, transparent 64%);
+    border-radius: 50%;
+  }
+  .hero-content { position: relative; z-index: 1; }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin: 0 0 18px;
+  }
+  .wordmark {
+    font-family: var(--display);
+    font-weight: 800;
+    font-stretch: condensed;
+    font-size: clamp(40px, 9vw, 64px);
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    margin: 0;
+    line-height: 0.95;
+    text-wrap: balance;
+  }
+  .wordmark em { font-style: normal; color: var(--text-dimmer); }
+  .tagline {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 16px 0 0;
+    letter-spacing: 0.04em;
+  }
+  .spec-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 22px;
+    flex-wrap: wrap;
+  }
+  .spec {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 4px 9px;
+    background: var(--panel);
+  }
+  .spec b { color: var(--text); font-weight: 400; }
+</style>

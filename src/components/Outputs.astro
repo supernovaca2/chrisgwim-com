@@ -1,0 +1,57 @@
+---
+const platforms = [
+  { name: 'Spotify', url: 'https://open.spotify.com/artist/6ig7ktBEad43lWfaIGbVWj' },
+  { name: 'Apple Music', url: 'https://music.apple.com/us/artist/chris-gwim/1874278935' },
+  { name: 'SoundCloud', url: 'https://soundcloud.com/chrisgwim' },
+  { name: 'YouTube', url: 'https://www.youtube.com/channel/UCmEy0B-IqiFATgSFhqSoFFA' },
+  { name: 'Deezer', url: 'https://www.deezer.com/us/artist/132090272' },
+];
+---
+<section class="section" aria-labelledby="outputs-h">
+  <div class="section-head">
+    <h2 class="section-title" id="outputs-h">Outputs</h2>
+    <span class="section-count">patch to platform</span>
+  </div>
+  <nav class="outputs" aria-label="Streaming platforms">
+    {platforms.map((platform) => (
+      <a class="jack" href={platform.url} target="_blank" rel="noopener">
+        <span class="jack-dot" aria-hidden="true"></span>
+        <span class="jack-label">{platform.name}</span>
+      </a>
+    ))}
+  </nav>
+</section>
+
+<style>
+  .outputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+  }
+  .jack {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--panel);
+    text-decoration: none;
+    color: var(--text);
+  }
+  .jack-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--line);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .jack-dot::after {
+    content: "";
+    position: absolute; inset: -3px;
+    border-radius: 50%;
+    border: 1px solid var(--line-faint);
+  }
+  .jack:hover .jack-dot,
+  .jack:focus-visible .jack-dot { background: var(--amber); }
+  .jack-label { font-size: 12px; }
+</style>
