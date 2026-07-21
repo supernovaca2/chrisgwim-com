@@ -17,6 +17,14 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     {releases.map((release, i) => (
       <a class="track-row" href={`${base}music/${release.id}/`}>
         <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
+        <img
+          class="track-cover"
+          src={base + release.data.cover.replace(/^\//, '')}
+          alt={`${release.data.title} cover`}
+          width="40"
+          height="40"
+          loading="lazy"
+        />
         <span class="track-title">
           {release.data.title}
           {i === 0 && <span class="track-latest">NEW</span>}
@@ -31,7 +39,7 @@ const base = import.meta.env.BASE_URL.endsWith('/')
   .tracklist { display: flex; flex-direction: column; }
   .track-row {
     display: grid;
-    grid-template-columns: 28px 1fr auto;
+    grid-template-columns: 28px 40px 1fr auto;
     align-items: center;
     gap: 12px;
     padding: 10px 8px;
@@ -45,6 +53,11 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     font-size: 11px;
     color: var(--text-dimmer);
     font-variant-numeric: tabular-nums;
+  }
+  .track-cover {
+    display: block;
+    border-radius: 2px;
+    border: 1px solid var(--line-faint);
   }
   .track-title { font-size: 14px; color: var(--text); }
   .track-latest {
