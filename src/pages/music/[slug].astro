@@ -16,11 +16,21 @@ const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
 const coverSrc = base + cover.replace(/^\//, '');
-const primaryPlatform = primaryUrl.includes('spotify') ? 'Spotify' : 'Deezer';
+const isSoundCloud = primaryUrl.includes('soundcloud.com');
+const primaryPlatform = primaryUrl.includes('spotify')
+  ? 'Spotify'
+  : primaryUrl.includes('music.apple.com')
+    ? 'Apple Music'
+    : isSoundCloud
+      ? 'SoundCloud'
+      : 'Deezer';
+const description = isSoundCloud
+  ? `${title} by Chris Gwim — released ${datePublished}. Listen on SoundCloud.`
+  : `${title} by Chris Gwim — released ${datePublished}. Listen on ${primaryPlatform}, SoundCloud, and all major platforms.`;
 ---
 <Base
   title={`${title} — Chris Gwim`}
-  description={`${title} by Chris Gwim — released ${datePublished}. Listen on ${primaryPlatform}, SoundCloud, and all major platforms.`}
+  description={description}
 >
   <article class="release">
     <div class="release-cover-frame">
@@ -45,10 +55,12 @@ const primaryPlatform = primaryUrl.includes('spotify') ? 'Spotify' : 'Deezer';
           <span class="jack-dot" aria-hidden="true"></span>
           <span>Listen on {primaryPlatform} ↗</span>
         </a>
-        <a class="jack" href="https://soundcloud.com/chrisgwim" target="_blank" rel="noopener">
-          <span class="jack-dot" aria-hidden="true"></span>
-          <span>SoundCloud ↗</span>
-        </a>
+        {!isSoundCloud && (
+          <a class="jack" href="https://soundcloud.com/chrisgwim" target="_blank" rel="noopener">
+            <span class="jack-dot" aria-hidden="true"></span>
+            <span>SoundCloud ↗</span>
+          </a>
+        )}
       </div>
       <a class="back-link" href={`${base}music/`}>← back to track list</a>
     </div>
