@@ -10,6 +10,9 @@ const releases = (await getCollection('releases')).sort(
   (a, b) => b.data.datePublished.localeCompare(a.data.datePublished)
 );
 const latest = releases[0];
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
 ---
 <Base
   title="Chris Gwim — Music Producer"
@@ -17,14 +20,23 @@ const latest = releases[0];
 >
   <section class="hero">
     <div class="dial" aria-hidden="true"><div class="dial-ticks"></div></div>
-    <div class="hero-content">
-      <p class="kicker">Producer · Electronic / Melodic Techno / EDM</p>
-      <h1 class="wordmark">Chris <em>Gwim</em></h1>
-      <p class="tagline">catalog log — {releases.length} singles, one series in progress</p>
-      <div class="spec-row">
-        <span class="spec">STATUS <b>LIVE ON SOUNDCLOUD</b></span>
-        <span class="spec">RELEASES <b>{String(releases.length).padStart(2, '0')}</b></span>
-        <span class="spec">LATEST <b>{latest.data.title.toUpperCase()}</b></span>
+    <div class="hero-grid">
+      <div class="operator-frame">
+        <div class="operator-label">
+          <span>OPERATOR</span>
+          <span class="rec">● LIVE</span>
+        </div>
+        <img src={`${base}artist-portrait.jpg`} alt="Chris Gwim" width="480" height="640" />
+      </div>
+      <div class="hero-content">
+        <p class="kicker">Producer · Electronic / Melodic Techno / EDM</p>
+        <h1 class="wordmark">Chris <em>Gwim</em></h1>
+        <p class="tagline">catalog log — {releases.length} singles, one series in progress</p>
+        <div class="spec-row">
+          <span class="spec">STATUS <b>LIVE ON SOUNDCLOUD</b></span>
+          <span class="spec">RELEASES <b>{String(releases.length).padStart(2, '0')}</b></span>
+          <span class="spec">LATEST <b>{latest.data.title.toUpperCase()}</b></span>
+        </div>
       </div>
     </div>
   </section>
@@ -39,7 +51,6 @@ const latest = releases[0];
   .hero {
     position: relative;
     padding: 56px 12px 40px;
-    text-align: center;
     overflow: hidden;
   }
   .dial {
@@ -76,7 +87,42 @@ const latest = releases[0];
     mask: radial-gradient(circle, transparent 60%, black 61%, black 63%, transparent 64%);
     border-radius: 50%;
   }
-  .hero-content { position: relative; z-index: 1; }
+  .hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 168px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 520px) {
+    .hero-grid { grid-template-columns: 1fr; }
+  }
+  .operator-frame {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .operator-label {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 9px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dimmer);
+  }
+  .operator-label .rec { color: var(--red); }
+  .operator-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: grayscale(1) contrast(1.08);
+  }
+  .hero-content { position: relative; }
   .kicker {
     font-family: var(--mono);
     font-size: 11px;
@@ -106,7 +152,7 @@ const latest = releases[0];
   }
   .spec-row {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
     margin-top: 22px;
     flex-wrap: wrap;
