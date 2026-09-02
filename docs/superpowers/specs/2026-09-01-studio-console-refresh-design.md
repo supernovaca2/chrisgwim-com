@@ -139,8 +139,18 @@ site to receive the campaign data anyway.
 
 ## Testing
 
+This repo has **no test infrastructure** — no `test` script, no `tests/` directory. The
+sibling repo `gwimentertainment-com` has a working pattern worth copying: `node --test`
+plus `tests/build-output.test.js`, which asserts against the built `dist/` output.
+
+Adopt it here as part of this work. The motivation is concrete rather than hygienic: the
+single largest risk in this change is missing one of the six hardcoded amber values, and a
+test asserting zero `e2a33f` in `dist/` catches that mechanically instead of by eye. The
+same file should guard `CNAME` surviving the build, since losing it drops the custom domain
+on the next Pages deploy and chrisgwim.com stops resolving.
+
 - `npm run build` clean
-- Existing tests in `tests/` pass
+- New `npm test` passes
 - Screenshot `/`, `/music/`, and one release page at 1440px and 390px
 - Confirm zero remaining `e2a33f` / `226, 163, 63` in `src/`
 - Confirm the SoundCloud embed renders in the new accent
