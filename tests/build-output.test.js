@@ -21,6 +21,18 @@ function walk(dir) {
 // Every text asset the browser will actually receive.
 const textFiles = () => walk(distRoot).filter((f) => /\.(html|css|js)$/.test(f));
 
+// All the CSS the homepage actually ships, whether Astro emits an external
+// stylesheet or inlines it into index.html (it inlines any sheet under ~4KB).
+// Concatenating both keeps CSS assertions valid across that threshold.
+const homepageStyles = () => {
+  const css = textFiles()
+    .filter((f) => f.endsWith('.css'))
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
+  const inline = readFileSync(dist('index.html'), 'utf8');
+  return css + inline;
+};
+
 test('the homepage is generated', () => {
   assert.ok(existsSync(dist('index.html')), 'dist/index.html should exist');
 });
@@ -51,12 +63,7 @@ test('no legacy amber survives anywhere in the build', () => {
 });
 
 test('the shell becomes a two-track grid on wide viewports', () => {
-  const css = textFiles()
-    .filter((f) => f.endsWith('.css'))
-    .map((f) => readFileSync(f, 'utf8'))
-    .join('\n');
-  const inline = readFileSync(dist('index.html'), 'utf8');
-  const all = css + inline;
+  const all = homepageStyles();
   // Lightning CSS (Astro's build minifier) rewrites `min-width: 1100px` to
   // `width>=1100px`, so accept either spelling of the same breakpoint.
   assert.match(all, /min-width:\s*1100px|width\s*>=\s*1100px/, 'expected a 1100px breakpoint');
@@ -80,15 +87,12 @@ test('the rail also renders for narrow viewports', () => {
   // The rail must be in the document at every width, not display:none'd away
   // on mobile - most music traffic is phones.
   assert.match(home, /class="rail"/, 'expected the rail markup in the document');
-  // The scoped `.rail` rule is emitted to an external dist/_astro/*.css file as
-  // `.rail[data-astro-cid-...]{...}`, so search the built CSS the way the layout
-  // test does rather than index.html, and match the attribute-scoped selector.
-  const css = textFiles()
-    .filter((f) => f.endsWith('.css'))
-    .map((f) => readFileSync(f, 'utf8'))
-    .join('\n');
+  // The scoped `.rail` rule ships as `.rail[data-astro-cid-...]{...}` in either
+  // an external dist/_astro/*.css file or, if Astro inlines that sheet, inside
+  // index.html. Search both the way the layout test does so the guard cannot go
+  // inert when the stylesheet crosses Astro's inlining threshold.
   assert.doesNotMatch(
-    css,
+    homepageStyles(),
     /\.rail\b[^{}]*\{[^}]*display:\s*none/,
     'the rail must reflow on mobile, not disappear'
   );
