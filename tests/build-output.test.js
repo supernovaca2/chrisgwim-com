@@ -7,6 +7,11 @@ const distRoot = fileURLToPath(new URL('../dist', import.meta.url));
 const dist = (file) => fileURLToPath(new URL(`../dist/${file}`, import.meta.url));
 
 function walk(dir) {
+  if (!existsSync(dir)) {
+    throw new Error(
+      `${dir} not found. Run \`npm run build\` before the tests (or use \`npm test\`, which builds first).`
+    );
+  }
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = `${dir}/${entry.name}`;
     return entry.isDirectory() ? walk(full) : [full];
@@ -62,7 +67,11 @@ test('the shell becomes a two-track grid on wide viewports', () => {
 test('the Lunthra rail is present and links out cleanly', () => {
   const home = readFileSync(dist('index.html'), 'utf8');
   assert.match(home, /https:\/\/lunthra\.com/, 'expected a lunthra.com link');
-  assert.match(home, /rel="noopener"/, 'expected rel=noopener on the outbound link');
+  assert.match(
+    home,
+    /<a class="rail-link"[^>]*rel="noopener"/,
+    'expected rel=noopener on the rail\'s own outbound link'
+  );
   assert.doesNotMatch(home, /utm_/, 'UTM parameters are not allowed on the Lunthra link');
 });
 
@@ -71,9 +80,16 @@ test('the rail also renders for narrow viewports', () => {
   // The rail must be in the document at every width, not display:none'd away
   // on mobile - most music traffic is phones.
   assert.match(home, /class="rail"/, 'expected the rail markup in the document');
+  // The scoped `.rail` rule is emitted to an external dist/_astro/*.css file as
+  // `.rail[data-astro-cid-...]{...}`, so search the built CSS the way the layout
+  // test does rather than index.html, and match the attribute-scoped selector.
+  const css = textFiles()
+    .filter((f) => f.endsWith('.css'))
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
   assert.doesNotMatch(
-    home,
-    /\.rail\s*\{[^}]*display:\s*none/,
+    css,
+    /\.rail\b[^{}]*\{[^}]*display:\s*none/,
     'the rail must reflow on mobile, not disappear'
   );
 });
