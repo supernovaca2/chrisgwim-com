@@ -3,9 +3,12 @@ interface Props {
   label?: string;
 }
 const { label = 'CH 01 — MAIN OUT' } = Astro.props;
+// Keep in sync with --accent in src/styles/tokens.css. The SoundCloud embed
+// takes a literal hex in its query string and cannot read a custom property.
+const ACCENT_HEX = '9ece6a';
 const playerSrc =
   'https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fchrisgwim' +
-  '&color=%23e2a33f&auto_play=false&hide_related=true&show_comments=false' +
+  `&color=%23${ACCENT_HEX}&auto_play=false&hide_related=true&show_comments=false` +
   '&show_user=true&show_reposts=false&show_teaser=false&visual=false';
 ---
 <div class="strip">
