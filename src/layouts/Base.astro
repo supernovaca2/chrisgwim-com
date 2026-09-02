@@ -1,5 +1,6 @@
 ---
 import Transport from '../components/Transport.astro';
+import Rail from '../components/Rail.astro';
 import '../styles/tokens.css';
 
 interface Props {
@@ -35,6 +36,7 @@ const base = import.meta.env.BASE_URL.endsWith('/')
       <main class="page">
         <slot />
       </main>
+      <Rail />
     </div>
     <footer class="footer">
       <span>END OF SESSION</span>

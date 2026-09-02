@@ -58,3 +58,22 @@ test('the shell becomes a two-track grid on wide viewports', () => {
   assert.match(all, /grid-template-columns:\s*var\(--console-w\)\s+var\(--rail-w\)/,
     'expected the console + rail grid');
 });
+
+test('the Lunthra rail is present and links out cleanly', () => {
+  const home = readFileSync(dist('index.html'), 'utf8');
+  assert.match(home, /https:\/\/lunthra\.com/, 'expected a lunthra.com link');
+  assert.match(home, /rel="noopener"/, 'expected rel=noopener on the outbound link');
+  assert.doesNotMatch(home, /utm_/, 'UTM parameters are not allowed on the Lunthra link');
+});
+
+test('the rail also renders for narrow viewports', () => {
+  const home = readFileSync(dist('index.html'), 'utf8');
+  // The rail must be in the document at every width, not display:none'd away
+  // on mobile - most music traffic is phones.
+  assert.match(home, /class="rail"/, 'expected the rail markup in the document');
+  assert.doesNotMatch(
+    home,
+    /\.rail\s*\{[^}]*display:\s*none/,
+    'the rail must reflow on mobile, not disappear'
+  );
+});
