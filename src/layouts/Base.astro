@@ -31,9 +31,11 @@ const base = import.meta.env.BASE_URL.endsWith('/')
       <a href={base}>INDEX</a>
       <a href={`${base}music/`}>TRACK LIST</a>
     </nav>
-    <main class="page">
-      <slot />
-    </main>
+    <div class="shell">
+      <main class="page">
+        <slot />
+      </main>
+    </div>
     <footer class="footer">
       <span>END OF SESSION</span>
       <a href="mailto:chrisgwim@chrisgwim.com">chrisgwim@chrisgwim.com</a>
@@ -45,7 +47,7 @@ const base = import.meta.env.BASE_URL.endsWith('/')
   .site-nav {
     display: flex;
     gap: 18px;
-    max-width: 760px;
+    max-width: var(--shell-w);
     margin: 0 auto;
     padding: 10px 20px 0;
   }
@@ -59,7 +61,7 @@ const base = import.meta.env.BASE_URL.endsWith('/')
   .site-nav a:hover,
   .site-nav a:focus-visible { color: var(--accent); }
   .footer {
-    max-width: 760px;
+    max-width: var(--shell-w);
     margin: 0 auto;
     padding: 16px 20px 22px;
     border-top: 1px solid var(--line);

@@ -44,3 +44,17 @@ test('no legacy amber survives anywhere in the build', () => {
     'legacy amber found in built output'
   );
 });
+
+test('the shell becomes a two-track grid on wide viewports', () => {
+  const css = textFiles()
+    .filter((f) => f.endsWith('.css'))
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
+  const inline = readFileSync(dist('index.html'), 'utf8');
+  const all = css + inline;
+  // Lightning CSS (Astro's build minifier) rewrites `min-width: 1100px` to
+  // `width>=1100px`, so accept either spelling of the same breakpoint.
+  assert.match(all, /min-width:\s*1100px|width\s*>=\s*1100px/, 'expected a 1100px breakpoint');
+  assert.match(all, /grid-template-columns:\s*var\(--console-w\)\s+var\(--rail-w\)/,
+    'expected the console + rail grid');
+});
