@@ -41,10 +41,10 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     </div>
   </section>
 
-  <ChannelStrip />
+  <div class="rack"><ChannelStrip /></div>
   <TrackList />
-  <Outputs />
-  <Promo />
+  <div class="rack"><Outputs /></div>
+  <div class="rack"><Promo /></div>
 </Base>
 
 <style>
@@ -61,7 +61,7 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     height: 640px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    border: 1px solid rgba(226, 163, 63, 0.08);
+    border: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
     opacity: 0.6;
     pointer-events: none;
   }
@@ -70,19 +70,19 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     position: absolute;
     inset: 70px;
     border-radius: 50%;
-    border: 1px solid rgba(226, 163, 63, 0.07);
+    border: 1px solid color-mix(in srgb, var(--accent) 7%, transparent);
   }
   .dial::after {
     content: "";
     position: absolute;
     inset: 140px;
     border-radius: 50%;
-    border: 1px solid rgba(226, 163, 63, 0.06);
+    border: 1px solid color-mix(in srgb, var(--accent) 6%, transparent);
   }
   .dial-ticks {
     position: absolute;
     inset: 0;
-    background: repeating-conic-gradient(rgba(226, 163, 63, 0.10) 0deg 1deg, transparent 1deg 15deg);
+    background: repeating-conic-gradient(color-mix(in srgb, var(--accent) 10%, transparent) 0deg 1deg, transparent 1deg 15deg);
     -webkit-mask: radial-gradient(circle, transparent 60%, black 61%, black 63%, transparent 64%);
     mask: radial-gradient(circle, transparent 60%, black 61%, black 63%, transparent 64%);
     border-radius: 50%;
@@ -127,7 +127,7 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.14em;
-    color: var(--amber);
+    color: var(--accent);
     text-transform: uppercase;
     margin: 0 0 18px;
   }

@@ -1,0 +1,83 @@
+---
+// Cross-promotion for the sibling brand. Deliberately one evergreen unit:
+// no featured collection and no product feed, so it never goes stale.
+// Lunthra's own palette is cool-only and would fight --accent, so the unit
+// wears this site's chrome and only the wordmark carries Lunthra identity.
+const LUNTHRA_URL = 'https://lunthra.com';
+---
+<aside class="rail" aria-label="Also from the studio">
+  <div class="rail-unit">
+    <div class="rail-label">
+      <span>ALSO FROM THE STUDIO</span>
+    </div>
+    <div class="rail-body">
+      <p class="rail-mark">LUNTHRA</p>
+      <p class="rail-copy">Science and sci-fi apparel, printed to order.</p>
+      <a class="rail-link" href={LUNTHRA_URL} target="_blank" rel="noopener">
+        Visit the store ↗
+      </a>
+    </div>
+  </div>
+</aside>
+
+<style>
+  /* Below the rail breakpoint this sits in normal flow after the console
+     column, styled as a sibling rack unit. It is never display:none. */
+  .rail {
+    padding: 0 20px 28px;
+  }
+  .rail-unit {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .rail-label {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dimmer);
+  }
+  .rail-body {
+    padding: 14px 12px;
+  }
+  .rail-mark {
+    margin: 0 0 8px;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: 0.14em;
+    color: var(--text);
+  }
+  .rail-copy {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-dim);
+  }
+  .rail-link {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid var(--accent-dim);
+    border-radius: 3px;
+    padding: 7px 12px;
+  }
+  .rail-link:hover,
+  .rail-link:focus-visible {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-color: var(--accent);
+  }
+
+  @media (min-width: 1100px) {
+    .rail {
+      position: sticky;
+      top: var(--rail-gap);
+      padding: 0 0 28px;
+    }
+  }
+</style>
