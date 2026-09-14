@@ -1,0 +1,142 @@
+---
+import type { Release } from '../lib/releases';
+import { fmtDuration, platformName, playerSrc } from '../lib/releases';
+
+interface Props {
+  release: Release;
+  label?: string;
+}
+const { release, label = 'CH 01 — LATEST RELEASE' } = Astro.props;
+const { title, datePublished, cover, primaryUrl, genre, lane, durationMs, soundcloudId } = release.data;
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
+const coverSrc = base + cover.replace(/^\//, '');
+const releaseHref = `${base}music/${release.id}/`;
+---
+<section class="unit featured" aria-labelledby="featured-h">
+  <div class="unit-label">
+    <span>{label}</span>
+    <span class="live">● LIVE</span>
+  </div>
+  <div class="featured-body">
+    <a class="featured-art" href={releaseHref}>
+      <img src={coverSrc} alt={`${title} cover art`} width="500" height="500" fetchpriority="high" />
+    </a>
+    <div class="featured-main">
+      <p class="featured-kicker">Now playing</p>
+      <h2 class="featured-title" id="featured-h">
+        <a href={releaseHref}>{title}</a>
+      </h2>
+      <dl class="readout">
+        <div><dt>Released</dt><dd>{datePublished}</dd></div>
+        <div><dt>Genre</dt><dd>{genre}</dd></div>
+        <div><dt>Bus</dt><dd>{lane}</dd></div>
+        <div><dt>Length</dt><dd>{fmtDuration(durationMs)}</dd></div>
+      </dl>
+      <div class="player-shell">
+        <iframe
+          height="166"
+          scrolling="no"
+          frameborder="no"
+          allow="autoplay"
+          title={`${title} by Chris Gwim on SoundCloud`}
+          src={playerSrc(soundcloudId)}></iframe>
+      </div>
+      <div class="featured-links">
+        <a class="jack" href={primaryUrl} target="_blank" rel="noopener">
+          <span class="jack-dot" aria-hidden="true"></span>
+          <span>Listen on {platformName(primaryUrl)} ↗</span>
+        </a>
+        <a class="jack" href={releaseHref}>
+          <span class="jack-dot" aria-hidden="true"></span>
+          <span>Release page →</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .featured { margin: 0 0 32px; }
+  .featured-body {
+    display: grid;
+    grid-template-columns: minmax(0, 300px) 1fr;
+    gap: 20px;
+    padding: 16px;
+  }
+  @media (max-width: 720px) {
+    .featured-body { grid-template-columns: 1fr; }
+  }
+  .featured-art {
+    display: block;
+    border: 1px solid var(--line-faint);
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .featured-art img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+  }
+  .featured-main { min-width: 0; }
+  .featured-kicker {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+  .featured-title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(28px, 5vw, 44px);
+    line-height: 0.95;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .featured-title a { text-decoration: none; }
+  .featured-title a:hover,
+  .featured-title a:focus-visible { color: var(--accent); }
+  .readout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .readout div {
+    border: 1px solid var(--line-faint);
+    border-radius: 3px;
+    padding: 6px 8px;
+    background: var(--bg);
+    min-width: 0;
+  }
+  .readout dt {
+    color: var(--text-dimmer);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 9px;
+    margin: 0 0 3px;
+  }
+  .readout dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+  .player-shell {
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--line-faint);
+    margin: 0 0 12px;
+  }
+  .player-shell iframe { display: block; width: 100%; border: 0; }
+  .featured-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+  }
+</style>

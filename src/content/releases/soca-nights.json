@@ -2,5 +2,15 @@
   "title": "Soca Nights",
   "datePublished": "2026-06-07",
   "cover": "/covers/soca-nights.jpg",
-  "primaryUrl": "https://open.spotify.com/album/3e8Lrp76ifFLsiqDzNSDgN"
+  "primaryUrl": "https://open.spotify.com/album/3e8Lrp76ifFLsiqDzNSDgN",
+  "soundcloudId": 2312470313,
+  "soundcloudUrl": "https://soundcloud.com/chrisgwim/soca-nights",
+  "genre": "Soca",
+  "lane": "World & Pop",
+  "durationMs": 233246,
+  "description": "Urban soul meets groovy soca, fused with night fete energy.",
+  "tags": [
+    "soca",
+    "urban soul"
+  ]
 }

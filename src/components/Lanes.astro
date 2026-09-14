@@ -1,0 +1,100 @@
+---
+import { getReleases, LANES, laneSlug, pad2 } from '../lib/releases';
+
+const releases = await getReleases();
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
+const lanes = LANES.map((lane) => {
+  const tracks = releases.filter((r) => r.data.lane === lane.name);
+  return { ...lane, tracks, slug: laneSlug(lane.name) };
+}).filter((lane) => lane.tracks.length > 0);
+---
+<section class="section" aria-labelledby="lanes-h">
+  <div class="section-head">
+    <h2 class="section-title" id="lanes-h">Buses</h2>
+    <span class="section-count">{pad2(lanes.length)} lanes · every track routed to one</span>
+  </div>
+  <div class="lanes">
+    {lanes.map((lane) => (
+      <a class="lane" href={`${base}music/#${lane.slug}`}>
+        <span class="lane-bus">BUS {lane.bus}</span>
+        <span class="lane-name">{lane.name}</span>
+        <span class="lane-blurb">{lane.blurb}</span>
+        <span class="lane-foot">
+          <span class="lane-covers" aria-hidden="true">
+            {lane.tracks.slice(0, 3).map((r) => (
+              <img src={base + r.data.cover.replace(/^\//, '')} alt="" width="28" height="28" loading="lazy" />
+            ))}
+          </span>
+          <span class="lane-count">{pad2(lane.tracks.length)} {lane.tracks.length === 1 ? 'track' : 'tracks'}</span>
+        </span>
+      </a>
+    ))}
+  </div>
+</section>
+
+<style>
+  .lanes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 8px;
+  }
+  .lane {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    text-decoration: none;
+    color: inherit;
+    min-width: 0;
+  }
+  .lane:hover,
+  .lane:focus-visible { border-color: var(--accent-dim); }
+  .lane-bus {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--text-dimmer);
+  }
+  .lane-name {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 20px;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  .lane:hover .lane-name,
+  .lane:focus-visible .lane-name { color: var(--accent); }
+  .lane-blurb {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+  .lane-foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .lane-covers { display: flex; }
+  .lane-covers img {
+    display: block;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+    margin-right: -6px;
+    background: var(--bg);
+  }
+  .lane-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dimmer);
+    white-space: nowrap;
+  }
+</style>
