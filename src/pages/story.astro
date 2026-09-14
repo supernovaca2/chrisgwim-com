@@ -1,0 +1,198 @@
+---
+import Base from '../layouts/Base.astro';
+import { getReleases, LANES, laneSlug, pad2 } from '../lib/releases';
+
+const releases = await getReleases();
+const first = releases[releases.length - 1];
+const latest = releases[0];
+const lanes = LANES.map((lane) => ({
+  ...lane,
+  slug: laneSlug(lane.name),
+  tracks: releases.filter((r) => r.data.lane === lane.name),
+})).filter((lane) => lane.tracks.length > 0);
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
+const monthYear = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+---
+<Base
+  title="Story — Chris Gwim"
+  description="Who Chris Gwim is: a producer working in Ableton Live across classical fusion, techno, house, piano, punk and world music."
+  current="story"
+>
+  <div class="story">
+    <section class="unit story-unit">
+      <div class="unit-label">
+        <span>OPERATOR — STORY</span>
+        <span class="live">● LIVE</span>
+      </div>
+      <div class="story-body">
+        <div class="story-portrait">
+          <img src={`${base}artist-portrait.jpg`} alt="Chris Gwim" width="480" height="640" />
+        </div>
+        <div class="story-copy">
+          <h1 class="story-title">Chris <em>Gwim</em></h1>
+          <p>
+            Chris Gwim is a producer. The instrument is Ableton Live; the output is whatever
+            the idea needs. {pad2(releases.length)} releases since {monthYear(first.data.datePublished)}:
+            melodic techno and trance, progressive house, solo piano, synth punk, drum and bass,
+            soca, afrobeats.
+          </p>
+          <p>
+            The current lane is classical fusion. <em>Beethoven Proteus</em> and <em>Mozart AETHER</em>{' '}
+            take a symphonic motif, keep its shape, and rebuild it at club tempo. More composers are
+            in the queue.
+          </p>
+          <p>
+            No live dates. The work is the catalog. Press play.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="chain-h">
+      <div class="section-head">
+        <h2 class="section-title" id="chain-h">Signal chain</h2>
+        <span class="section-count">as of {latest.data.datePublished}</span>
+      </div>
+      <dl class="chain">
+        <div><dt>DAW</dt><dd>Ableton Live</dd></div>
+        <div><dt>Releases</dt><dd>{pad2(releases.length)}</dd></div>
+        <div><dt>Buses</dt><dd>{pad2(lanes.length)}</dd></div>
+        <div><dt>First release</dt><dd>{first.data.datePublished}</dd></div>
+        <div><dt>Latest</dt><dd>{latest.data.datePublished}</dd></div>
+      </dl>
+    </section>
+
+    <section class="section" aria-labelledby="routing-h">
+      <div class="section-head">
+        <h2 class="section-title" id="routing-h">Routing</h2>
+        <span class="section-count">every track on one bus</span>
+      </div>
+      <ol class="routing">
+        {lanes.map((lane) => (
+          <li>
+            <a class="route" href={`${base}music/#${lane.slug}`}>
+              <span class="route-bus mono">BUS {lane.bus}</span>
+              <span class="route-name">{lane.name}</span>
+              <span class="route-tracks mono">
+                {lane.tracks.map((r) => r.data.title).join(' · ')}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="section" aria-labelledby="press-h">
+      <div class="section-head">
+        <h2 class="section-title" id="press-h">Press &amp; licensing</h2>
+        <span class="section-count">assets</span>
+      </div>
+      <p class="press-copy">
+        Cover art on every release page is served at 500 px. For hi-res art, a bio, or a
+        sync inquiry, use the contact link in the footer.
+      </p>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .story { padding-top: 40px; }
+  .story-unit { margin: 0 0 32px; }
+  .story-body {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    padding: 18px;
+  }
+  @media (max-width: 620px) {
+    .story-body { grid-template-columns: 1fr; }
+    .story-portrait { max-width: 220px; }
+  }
+  .story-portrait img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--line-faint);
+    border-radius: 3px;
+    filter: grayscale(1) contrast(1.08);
+  }
+  .story-copy { min-width: 0; }
+  .story-title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(40px, 8vw, 64px);
+    line-height: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.005em;
+    margin: 0 0 18px;
+  }
+  .story-title em { font-style: normal; color: var(--text-dimmer); }
+  .story-copy p {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin: 0 0 14px;
+    max-width: 60ch;
+  }
+  .story-copy p em { font-style: normal; color: var(--text); }
+  .chain {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .chain div {
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 8px 10px;
+    background: var(--panel);
+  }
+  .chain dt {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dimmer);
+    margin: 0 0 4px;
+  }
+  .chain dd { margin: 0; color: var(--text); }
+  .routing {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .route {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 2px 14px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--line-faint);
+    text-decoration: none;
+    color: inherit;
+  }
+  .routing li:last-child .route { border-bottom: none; }
+  .route-bus { font-size: 10px; color: var(--text-dimmer); grid-row: 1 / span 2; padding-top: 3px; }
+  .route-name {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+  .route:hover .route-name,
+  .route:focus-visible .route-name { color: var(--accent); }
+  .route-tracks { font-size: 10px; color: var(--text-dimmer); line-height: 1.6; }
+  .press-copy {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin: 0;
+    max-width: 60ch;
+  }
+</style>

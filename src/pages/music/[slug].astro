@@ -1,100 +1,161 @@
 ---
-import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import {
+  getReleases,
+  fmtDuration,
+  isoDuration,
+  laneSlug,
+  pad2,
+  platformName,
+  playerSrc,
+} from '../../lib/releases';
 
 export async function getStaticPaths() {
-  const releases = await getCollection('releases');
-  return releases.map((release) => ({
+  const releases = await getReleases();
+  return releases.map((release, i) => ({
     params: { slug: release.id },
-    props: { release },
+    props: {
+      release,
+      index: i,
+      total: releases.length,
+      newer: releases[i - 1] ?? null,
+      older: releases[i + 1] ?? null,
+    },
   }));
 }
 
-const { release } = Astro.props;
-const { title, datePublished, cover, primaryUrl, series } = release.data;
+const { release, index, total, newer, older } = Astro.props;
+const {
+  title, datePublished, cover, primaryUrl, series, genre, lane, durationMs,
+  soundcloudId, soundcloudUrl, description, tags,
+} = release.data;
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
 const coverSrc = base + cover.replace(/^\//, '');
 const isSoundCloud = primaryUrl.includes('soundcloud.com');
-const primaryPlatform = primaryUrl.includes('spotify')
-  ? 'Spotify'
-  : primaryUrl.includes('music.apple.com')
-    ? 'Apple Music'
-    : isSoundCloud
-      ? 'SoundCloud'
-      : 'Deezer';
-const description = isSoundCloud
-  ? `${title} by Chris Gwim — released ${datePublished}. Listen on SoundCloud.`
-  : `${title} by Chris Gwim — released ${datePublished}. Listen on ${primaryPlatform}, SoundCloud, and all major platforms.`;
+const primaryPlatform = platformName(primaryUrl);
+const site = Astro.site ?? new URL('https://chrisgwim.com');
+const pageUrl = new URL(`${base}music/${release.id}/`, site).toString();
+// Track number counts from the first release, so it never shifts when a new
+// track lands at the top of the list.
+const trackNo = total - index;
+
+const metaDescription = isSoundCloud
+  ? `${title} by Chris Gwim, ${genre}, ${fmtDuration(durationMs)}. Released ${datePublished}. Listen on SoundCloud.`
+  : `${title} by Chris Gwim, ${genre}, ${fmtDuration(durationMs)}. Released ${datePublished}. Listen on ${primaryPlatform}, SoundCloud, and all major platforms.`;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'MusicRecording',
+  name: title,
+  url: pageUrl,
+  image: new URL(coverSrc, site).toString(),
+  datePublished,
+  duration: isoDuration(durationMs),
+  genre,
+  byArtist: { '@type': 'MusicGroup', name: 'Chris Gwim', url: site.toString() },
+  sameAs: Array.from(new Set([primaryUrl, soundcloudUrl])),
+};
 ---
 <Base
   title={`${title} — Chris Gwim`}
-  description={description}
+  description={metaDescription}
+  ogImage={cover}
+  jsonLd={jsonLd}
+  current="music"
 >
   <article class="release">
-    <div class="release-cover-frame">
-      <div class="release-cover-label">
-        <span>RELEASE — {datePublished}</span>
+    <div class="release-cover-frame unit">
+      <div class="unit-label">
+        <span>TRACK {pad2(trackNo)} — {datePublished}</span>
         {series && <span class="series-tag">SERIES: {series.toUpperCase()}</span>}
       </div>
-      <img class="release-cover" src={coverSrc} alt={`${title} cover art`} width="500" height="500" />
+      <img class="release-cover" src={coverSrc} alt={`${title} cover art`} width="500" height="500" fetchpriority="high" />
     </div>
 
     <div class="release-meta">
+      <p class="release-kicker">{lane}</p>
       <h1 class="release-title">{title}</h1>
       <table class="meta-table">
         <tbody>
           <tr><td>RELEASED</td><td>{datePublished}</td></tr>
+          <tr><td>GENRE</td><td>{genre}</td></tr>
+          <tr><td>BUS</td><td><a href={`${base}music/#${laneSlug(lane)}`}>{lane}</a></td></tr>
+          <tr><td>LENGTH</td><td>{fmtDuration(durationMs)}</td></tr>
           <tr><td>ARTIST</td><td>Chris Gwim</td></tr>
           {series && <tr><td>SERIES</td><td>{series}</td></tr>}
         </tbody>
       </table>
+      {description && <p class="release-notes">{description}</p>}
+      {tags.length > 0 && (
+        <p class="release-tags">
+          {tags.map((tag) => <span class="tag">{tag}</span>)}
+        </p>
+      )}
       <div class="release-links">
         <a class="jack" href={primaryUrl} target="_blank" rel="noopener">
           <span class="jack-dot" aria-hidden="true"></span>
           <span>Listen on {primaryPlatform} ↗</span>
         </a>
         {!isSoundCloud && (
-          <a class="jack" href="https://soundcloud.com/chrisgwim" target="_blank" rel="noopener">
+          <a class="jack" href={soundcloudUrl} target="_blank" rel="noopener">
             <span class="jack-dot" aria-hidden="true"></span>
             <span>SoundCloud ↗</span>
           </a>
         )}
       </div>
-      <a class="back-link" href={`${base}music/`}>← back to track list</a>
     </div>
   </article>
+
+  <section class="unit player-unit" aria-label={`Play ${title}`}>
+    <div class="unit-label">
+      <span>CH {pad2(trackNo)} — {title.toUpperCase()}</span>
+      <span class="live">● LIVE</span>
+    </div>
+    <div class="unit-body">
+      <div class="player-shell">
+        <iframe
+          height="166"
+          scrolling="no"
+          frameborder="no"
+          allow="autoplay"
+          title={`${title} by Chris Gwim on SoundCloud`}
+          src={playerSrc(soundcloudId)}></iframe>
+      </div>
+    </div>
+  </section>
+
+  <nav class="release-nav" aria-label="Adjacent releases">
+    {older ? (
+      <a class="release-nav-link" href={`${base}music/${older.id}/`}>
+        <span class="release-nav-dir">← PREV</span>
+        <span class="release-nav-title">{older.data.title}</span>
+      </a>
+    ) : <span class="release-nav-empty" aria-hidden="true" />}
+    <a class="release-nav-link release-nav-all" href={`${base}music/`}>
+      <span class="release-nav-dir">TRACK LIST</span>
+      <span class="release-nav-title">{pad2(total)} releases</span>
+    </a>
+    {newer ? (
+      <a class="release-nav-link release-nav-next" href={`${base}music/${newer.id}/`}>
+        <span class="release-nav-dir">NEXT →</span>
+        <span class="release-nav-title">{newer.data.title}</span>
+      </a>
+    ) : <span class="release-nav-empty" aria-hidden="true" />}
+  </nav>
 </Base>
 
 <style>
   .release {
     display: grid;
-    grid-template-columns: minmax(0, 480px) 1fr;
+    grid-template-columns: minmax(0, 440px) 1fr;
     gap: 28px;
     padding: 40px 0 28px;
     align-items: start;
   }
   @media (max-width: 700px) {
     .release { grid-template-columns: 1fr; }
-  }
-  .release-cover-frame {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .release-cover-label {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 9px 14px;
-    border-bottom: 1px solid var(--line);
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-dimmer);
   }
   .series-tag { color: var(--accent); }
   .release-cover {
@@ -111,22 +172,31 @@ const description = isSoundCloud
     from { opacity: 0; transform: scale(0.985); }
     to { opacity: 1; transform: scale(1); }
   }
+  .release-meta { min-width: 0; }
+  .release-kicker {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
   .release-title {
     font-family: var(--display);
     font-weight: 800;
-    font-stretch: condensed;
-    font-size: clamp(24px, 4vw, 34px);
+    font-size: clamp(34px, 6vw, 56px);
     text-transform: uppercase;
-    letter-spacing: -0.01em;
+    letter-spacing: 0.01em;
     margin: 0 0 18px;
-    line-height: 1;
+    line-height: 0.92;
+    text-wrap: balance;
   }
   .meta-table {
     width: 100%;
     border-collapse: collapse;
     font-family: var(--mono);
     font-size: 11px;
-    margin: 0 0 20px;
+    margin: 0 0 18px;
   }
   .meta-table td {
     padding: 7px 0;
@@ -138,36 +208,76 @@ const description = isSoundCloud
     width: 96px;
   }
   .meta-table td:last-child { color: var(--text); }
+  .meta-table a { text-decoration: none; border-bottom: 1px solid var(--line); }
+  .meta-table a:hover,
+  .meta-table a:focus-visible { color: var(--accent); border-bottom-color: var(--accent-dim); }
+  .release-notes {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin: 0 0 16px;
+  }
+  .release-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 18px;
+  }
   .release-links {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin: 0 0 20px;
   }
-  .jack {
+  .player-unit { margin: 0 0 28px; }
+  .player-shell {
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--line-faint);
+  }
+  .player-shell iframe { display: block; width: 100%; border: 0; }
+  .release-nav {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    margin: 0 0 32px;
+  }
+  @media (max-width: 560px) {
+    .release-nav { grid-template-columns: 1fr 1fr; }
+    .release-nav-all { grid-column: 1 / -1; order: 3; }
+    .release-nav-empty { display: none; }
+    .release-nav-link:only-of-type { grid-column: 1 / -1; }
+  }
+  .release-nav-link {
     display: flex;
-    align-items: center;
-    gap: 9px;
+    flex-direction: column;
+    gap: 3px;
     padding: 10px 12px;
     border: 1px solid var(--line);
     border-radius: 3px;
     background: var(--panel);
     text-decoration: none;
-    color: var(--text);
-    font-size: 12px;
+    min-width: 0;
   }
-  .jack-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--line);
-    flex-shrink: 0;
-  }
-  .jack:hover .jack-dot,
-  .jack:focus-visible .jack-dot { background: var(--accent); }
-  .back-link {
+  .release-nav-next { text-align: right; }
+  .release-nav-all { text-align: center; }
+  .release-nav-link:hover,
+  .release-nav-link:focus-visible { border-color: var(--accent-dim); }
+  .release-nav-dir {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 9px;
+    letter-spacing: 0.12em;
     color: var(--text-dimmer);
-    text-decoration: none;
   }
-  .back-link:hover { color: var(--text-dim); }
+  .release-nav-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 1.1;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .release-nav-link:hover .release-nav-title,
+  .release-nav-link:focus-visible .release-nav-title { color: var(--accent); }
 </style>

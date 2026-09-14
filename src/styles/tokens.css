@@ -1,4 +1,21 @@
 /* Studio Console tokens — source of truth: Reference/chrisgwim-brand.md */
+
+/* Display face: Barlow Condensed (OFL), self-hosted. Latin subset only. */
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/barlow-condensed-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/barlow-condensed-800.woff2") format("woff2");
+}
+
 :root {
   --bg: #111213;
   --panel: #1a1b1d;
@@ -11,11 +28,11 @@
   --accent: #9ece6a;
   --accent-dim: #4a6130;
   --red: #c0453d;
-  --console-w: 760px;
+  --console-w: 800px;
   --rail-w: 200px;
   --rail-gap: 28px;
   --shell-w: var(--console-w);
-  --display: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   --body: -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
 }
@@ -36,6 +53,12 @@ html, body {
 }
 
 a { color: inherit; }
+img { max-width: 100%; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 .page {
   max-width: var(--console-w);
@@ -50,10 +73,10 @@ a { color: inherit; }
   margin: 0 auto;
 }
 
-/* Outboard rack strips inset inside the console column so TrackList reads as
-   the wide mixer area. Below the rail breakpoint everything sits flush. */
+/* Outboard rack strips inset inside the console column so the track list
+   reads as the wide mixer area. Below the rail breakpoint everything sits flush. */
 .rack {
-  max-width: 620px;
+  max-width: 660px;
   margin-inline: auto;
 }
 
@@ -73,12 +96,13 @@ a { color: inherit; }
   .rack { max-width: none; }
 }
 
-.section { padding: 0 0 28px; }
+.section { padding: 0 0 32px; }
 
 .section-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 12px;
   margin: 0 0 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--line-faint);
@@ -87,9 +111,9 @@ a { color: inherit; }
 .section-title {
   font-family: var(--display);
   font-weight: 800;
-  font-size: 15px;
+  font-size: 18px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   margin: 0;
 }
 
@@ -97,4 +121,91 @@ a { color: inherit; }
   font-family: var(--mono);
   font-size: 11px;
   color: var(--text-dimmer);
+  white-space: nowrap;
+}
+
+/* A rack unit: the panel + steel border + mono label every outboard piece
+   of the console wears. */
+.unit {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.unit-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dimmer);
+}
+.unit-label .live { color: var(--red); }
+.unit-body { padding: 14px; }
+
+/* Patch-bay jack: the one link style for anything that leaves the console. */
+.jack {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  text-decoration: none;
+  color: var(--text);
+  font-size: 12px;
+}
+.jack-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--line);
+  flex-shrink: 0;
+  position: relative;
+}
+.jack-dot::after {
+  content: "";
+  position: absolute; inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--line-faint);
+}
+.jack:hover .jack-dot,
+.jack:focus-visible .jack-dot { background: var(--accent); }
+.jack:hover,
+.jack:focus-visible { border-color: var(--text-dimmer); }
+
+/* Small mono tag: NEW, series, lane, genre. */
+.tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dimmer);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 1px 5px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+.tag-accent {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

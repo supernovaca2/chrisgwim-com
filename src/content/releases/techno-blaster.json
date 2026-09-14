@@ -2,5 +2,15 @@
   "title": "Techno Blaster",
   "datePublished": "2026-06-23",
   "cover": "/covers/techno-blaster.jpg",
-  "primaryUrl": "https://open.spotify.com/album/7upAraF4pAxc7HLzpXu2NW"
+  "primaryUrl": "https://open.spotify.com/album/7upAraF4pAxc7HLzpXu2NW",
+  "soundcloudId": 2342644835,
+  "soundcloudUrl": "https://soundcloud.com/chrisgwim/techno-blaster",
+  "genre": "Techno",
+  "lane": "Techno & Trance",
+  "durationMs": 274566,
+  "description": "A future where Earth and machines unite against space invaders. A story put into a techno song.",
+  "tags": [
+    "techno",
+    "story"
+  ]
 }

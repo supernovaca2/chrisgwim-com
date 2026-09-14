@@ -1,22 +1,24 @@
 ---
 import Base from '../layouts/Base.astro';
-import ChannelStrip from '../components/ChannelStrip.astro';
+import Featured from '../components/Featured.astro';
+import Lanes from '../components/Lanes.astro';
 import TrackList from '../components/TrackList.astro';
 import Outputs from '../components/Outputs.astro';
 import Promo from '../components/Promo.astro';
-import { getCollection } from 'astro:content';
+import { getReleases, LANES, pad2 } from '../lib/releases';
 
-const releases = (await getCollection('releases')).sort(
-  (a, b) => b.data.datePublished.localeCompare(a.data.datePublished)
-);
+const releases = await getReleases();
 const latest = releases[0];
+const lanesInUse = LANES.filter((l) => releases.some((r) => r.data.lane === l.name));
+const firstYear = releases[releases.length - 1].data.datePublished.slice(0, 4);
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
 ---
 <Base
-  title="Chris Gwim — Music Producer"
-  description="Chris Gwim — electronic, melodic techno, and EDM producer. Latest release and full catalog, live from SoundCloud."
+  title="Chris Gwim — Producer"
+  description={`Chris Gwim: ${releases.length} releases on ${lanesInUse.length} buses, from classical fusion and melodic techno to piano and synth punk. Latest: ${latest.data.title}.`}
+  current="index"
 >
   <section class="hero">
     <div class="dial" aria-hidden="true"><div class="dial-ticks"></div></div>
@@ -29,20 +31,25 @@ const base = import.meta.env.BASE_URL.endsWith('/')
         <img src={`${base}artist-portrait.jpg`} alt="Chris Gwim" width="480" height="640" />
       </div>
       <div class="hero-content">
-        <p class="kicker">Producer · Electronic / Melodic Techno / EDM</p>
+        <p class="kicker">Producer · Classical Fusion / Techno / Electronic</p>
         <h1 class="wordmark">Chris <em>Gwim</em></h1>
-        <p class="tagline">catalog log — {releases.length} singles, one series in progress</p>
+        <p class="tagline">
+          {pad2(releases.length)} releases on {pad2(lanesInUse.length)} buses, from classical fusion to synth punk. Ableton Live is the instrument. Press play.
+        </p>
         <div class="spec-row">
-          <span class="spec">STATUS <b>LIVE ON SOUNDCLOUD</b></span>
-          <span class="spec">RELEASES <b>{String(releases.length).padStart(2, '0')}</b></span>
+          <span class="spec">STATUS <b>LIVE</b></span>
+          <span class="spec">RELEASES <b>{pad2(releases.length)}</b></span>
+          <span class="spec">BUSES <b>{pad2(lanesInUse.length)}</b></span>
+          <span class="spec">SINCE <b>{firstYear}</b></span>
           <span class="spec">LATEST <b>{latest.data.title.toUpperCase()}</b></span>
         </div>
       </div>
     </div>
   </section>
 
-  <div class="rack"><ChannelStrip /></div>
-  <TrackList />
+  <Featured release={latest} />
+  <Lanes />
+  <TrackList releases={releases.slice(0, 10)} total={releases.length} />
   <div class="rack"><Outputs /></div>
   <div class="rack"><Promo /></div>
 </Base>
@@ -50,7 +57,7 @@ const base = import.meta.env.BASE_URL.endsWith('/')
 <style>
   .hero {
     position: relative;
-    padding: 56px 12px 40px;
+    padding: 52px 12px 40px;
     overflow: hidden;
   }
   .dial {
@@ -91,12 +98,13 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: 168px 1fr;
-    gap: 24px;
+    grid-template-columns: 184px 1fr;
+    gap: 28px;
     align-items: start;
   }
-  @media (max-width: 520px) {
+  @media (max-width: 560px) {
     .hero-grid { grid-template-columns: 1fr; }
+    .operator-frame { max-width: 220px; }
   }
   .operator-frame {
     background: var(--panel);
@@ -122,39 +130,38 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     height: auto;
     filter: grayscale(1) contrast(1.08);
   }
-  .hero-content { position: relative; }
+  .hero-content { position: relative; min-width: 0; }
   .kicker {
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.14em;
     color: var(--accent);
     text-transform: uppercase;
-    margin: 0 0 18px;
+    margin: 0 0 14px;
   }
   .wordmark {
     font-family: var(--display);
     font-weight: 800;
-    font-stretch: condensed;
-    font-size: clamp(40px, 9vw, 64px);
-    letter-spacing: -0.01em;
+    font-size: clamp(56px, 12vw, 112px);
+    letter-spacing: 0.005em;
     text-transform: uppercase;
     margin: 0;
-    line-height: 0.95;
+    line-height: 0.88;
     text-wrap: balance;
   }
   .wordmark em { font-style: normal; color: var(--text-dimmer); }
   .tagline {
-    font-family: var(--mono);
-    font-size: 12px;
+    font-size: 15px;
+    line-height: 1.55;
     color: var(--text-dim);
-    margin: 16px 0 0;
-    letter-spacing: 0.04em;
+    margin: 18px 0 0;
+    max-width: 46ch;
   }
   .spec-row {
     display: flex;
     justify-content: flex-start;
     gap: 8px;
-    margin-top: 22px;
+    margin-top: 20px;
     flex-wrap: wrap;
   }
   .spec {

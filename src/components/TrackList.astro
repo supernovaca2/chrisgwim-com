@@ -1,83 +1,151 @@
 ---
-import { getCollection } from 'astro:content';
+import type { Release } from '../lib/releases';
+import { fmtDuration, laneSlug, pad2 } from '../lib/releases';
 
-const releases = (await getCollection('releases')).sort(
-  (a, b) => b.data.datePublished.localeCompare(a.data.datePublished)
-);
+interface Props {
+  releases: Release[];
+  /** Total in the catalog; when larger than `releases.length` a "see all" row renders. */
+  total?: number;
+  /** Heading id, so a page can host more than one list. */
+  headingId?: string;
+  title?: string;
+  /** Render the h-level as h1 on the catalog page, h2 elsewhere. */
+  level?: 1 | 2;
+  /** Whether the first row is the newest release in the catalog. */
+  markLatest?: boolean;
+}
+const {
+  releases,
+  total = releases.length,
+  headingId = 'tracklist-h',
+  title = 'Track list',
+  level = 2,
+  markLatest = true,
+} = Astro.props;
+const Heading = level === 1 ? 'h1' : 'h2';
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
 ---
-<section class="section" aria-labelledby="tracklist-h">
+<section class="section" aria-labelledby={headingId}>
   <div class="section-head">
-    <h2 class="section-title" id="tracklist-h">Track list</h2>
-    <span class="section-count">{String(releases.length).padStart(2, '0')} releases</span>
+    <Heading class="section-title" id={headingId}>{title}</Heading>
+    <span class="section-count">
+      {releases.length < total ? `latest ${pad2(releases.length)} of ${pad2(total)}` : `${pad2(total)} releases`}
+    </span>
   </div>
-  <div class="tracklist">
+  <slot name="controls" />
+  <ol class="tracklist">
     {releases.map((release, i) => (
-      <a class="track-row" href={`${base}music/${release.id}/`}>
-        <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
-        <img
-          class="track-cover"
-          src={base + release.data.cover.replace(/^\//, '')}
-          alt={`${release.data.title} cover`}
-          width="40"
-          height="40"
-          loading="lazy"
-        />
-        <span class="track-title">
-          {release.data.title}
-          {i === 0 && <span class="track-latest">NEW</span>}
-        </span>
-        <span class="track-link">view →</span>
-      </a>
+      <li class="track-row-wrap" data-lane={laneSlug(release.data.lane)}>
+        <a class="track-row" href={`${base}music/${release.id}/`}>
+          <span class="track-num mono">{pad2(i + 1)}</span>
+          <img
+            class="track-cover"
+            src={base + release.data.cover.replace(/^\//, '')}
+            alt=""
+            width="44"
+            height="44"
+            loading="lazy"
+          />
+          <span class="track-main">
+            <span class="track-title">
+              {release.data.title}
+              {markLatest && i === 0 && <span class="tag tag-accent">NEW</span>}
+              {release.data.series && <span class="tag">{release.data.series}</span>}
+            </span>
+            <span class="track-genre mono">
+              {release.data.genre}{release.data.genre !== release.data.lane && ` · ${release.data.lane}`}
+            </span>
+          </span>
+          <span class="track-len mono">{fmtDuration(release.data.durationMs)}</span>
+          <span class="track-date mono">{release.data.datePublished}</span>
+        </a>
+      </li>
     ))}
-  </div>
+  </ol>
+  {releases.length < total && (
+    <a class="track-all" href={`${base}music/`}>
+      <span>ALL {pad2(total)} RELEASES</span>
+      <span aria-hidden="true">→</span>
+    </a>
+  )}
 </section>
 
 <style>
-  .tracklist { display: flex; flex-direction: column; }
+  .tracklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
   .track-row {
     display: grid;
-    grid-template-columns: 28px 40px 1fr auto;
+    grid-template-columns: 28px 44px 1fr auto auto;
     align-items: center;
     gap: 12px;
-    padding: 10px 8px;
+    padding: 9px 8px;
     border-bottom: 1px solid var(--line-faint);
     text-decoration: none;
     color: inherit;
   }
-  .track-row:last-child { border-bottom: none; }
+  .track-row-wrap:last-child .track-row { border-bottom: none; }
   .track-num {
-    font-family: var(--mono);
     font-size: 11px;
     color: var(--text-dimmer);
-    font-variant-numeric: tabular-nums;
   }
   .track-cover {
     display: block;
     border-radius: 2px;
     border: 1px solid var(--line-faint);
+    background: var(--bg);
   }
-  .track-title { font-size: 14px; color: var(--text); }
-  .track-latest {
-    font-family: var(--mono);
-    font-size: 9px;
-    color: var(--accent);
-    border: 1px solid var(--accent-dim);
-    border-radius: 2px;
-    padding: 1px 5px;
-    margin-left: 8px;
-    letter-spacing: 0.06em;
-    vertical-align: 1px;
+  .track-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .track-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 1.05;
+    letter-spacing: 0.01em;
+    color: var(--text);
   }
-  .track-link {
-    font-family: var(--mono);
+  .track-title .tag { margin-left: 8px; font-family: var(--mono); font-weight: 400; }
+  .track-genre {
+    font-size: 10px;
+    color: var(--text-dimmer);
+    letter-spacing: 0.04em;
+  }
+  .track-len,
+  .track-date {
     font-size: 11px;
     color: var(--text-dimmer);
   }
+  @media (max-width: 560px) {
+    .track-date { display: none; }
+    .track-row { grid-template-columns: 24px 40px 1fr auto; gap: 10px; }
+  }
   .track-row:hover .track-title,
   .track-row:focus-visible .track-title { color: var(--accent); }
-  .track-row:hover .track-link,
-  .track-row:focus-visible .track-link { color: var(--text-dim); }
+  .track-row:hover .track-len,
+  .track-row:focus-visible .track-len { color: var(--text-dim); }
+  .track-all {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--accent-dim);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .track-all:hover,
+  .track-all:focus-visible {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-color: var(--accent);
+  }
 </style>

@@ -1,8 +1,16 @@
 ---
+import { getReleases, LANES, pad2 } from '../lib/releases';
+
 interface Props {
   session?: string;
 }
 const { session = 'CHRISGWIM.COM' } = Astro.props;
+
+// The readout is live data, not set dressing: the counts come from the
+// release collection, so the transport bar updates with every new track.
+const releases = await getReleases();
+const buses = LANES.filter((l) => releases.some((r) => r.data.lane === l.name)).length;
+const latest = releases[0];
 ---
 <header class="transport">
   <div class="transport-left">
@@ -10,9 +18,9 @@ const { session = 'CHRISGWIM.COM' } = Astro.props;
     SESSION: {session}
   </div>
   <div class="transport-right">
-    <span>128 BPM</span>
-    <span>A MIN</span>
-    <span>44.1K / 24B</span>
+    <span><b>{pad2(releases.length)}</b> TRACKS</span>
+    <span><b>{pad2(buses)}</b> BUSES</span>
+    <span class="transport-latest">LATEST <b>{latest.data.datePublished}</b></span>
   </div>
 </header>
 
@@ -21,6 +29,7 @@ const { session = 'CHRISGWIM.COM' } = Astro.props;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 10px 16px;
     background: var(--panel);
     border-bottom: 1px solid var(--line);
@@ -29,7 +38,8 @@ const { session = 'CHRISGWIM.COM' } = Astro.props;
     letter-spacing: 0.04em;
     color: var(--text-dim);
   }
-  .transport-left { display: flex; align-items: center; gap: 10px; }
+  .transport b { font-weight: 400; color: var(--text); }
+  .transport-left { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
   .rec-dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--red);
@@ -39,8 +49,9 @@ const { session = 'CHRISGWIM.COM' } = Astro.props;
     .rec-dot { animation: pulse 2.2s ease-in-out infinite; }
   }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-  .transport-right { display: flex; gap: 18px; }
-  @media (max-width: 480px) {
+  .transport-right { display: flex; gap: 18px; white-space: nowrap; }
+  @media (max-width: 560px) {
     .transport-right { gap: 10px; }
+    .transport-latest { display: none; }
   }
 </style>

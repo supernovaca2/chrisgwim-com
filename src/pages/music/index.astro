@@ -1,105 +1,97 @@
 ---
-import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import TrackList from '../../components/TrackList.astro';
+import { getReleases, LANES, laneSlug, pad2 } from '../../lib/releases';
 
-const releases = (await getCollection('releases')).sort(
-  (a, b) => b.data.datePublished.localeCompare(a.data.datePublished)
-);
-const base = import.meta.env.BASE_URL.endsWith('/')
-  ? import.meta.env.BASE_URL
-  : import.meta.env.BASE_URL + '/';
+const releases = await getReleases();
+const lanes = LANES.map((lane) => ({
+  ...lane,
+  slug: laneSlug(lane.name),
+  count: releases.filter((r) => r.data.lane === lane.name).length,
+})).filter((lane) => lane.count > 0);
 ---
 <Base
   title="Track List — Chris Gwim"
-  description="Full Chris Gwim catalog — every release with cover art, dates, and streaming links."
+  description={`Every Chris Gwim release: ${releases.length} tracks with cover art, genre, length, and streaming links, filterable by bus.`}
+  current="music"
 >
-  <section class="section catalog" aria-labelledby="catalog-h">
-    <div class="section-head">
-      <h1 class="section-title" id="catalog-h">Track list</h1>
-      <span class="section-count">{String(releases.length).padStart(2, '0')} releases</span>
-    </div>
-    <div class="tracklist">
-      {releases.map((release, i) => (
-        <a class="track-row" href={`${base}music/${release.id}/`}>
-          <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
-          <img
-            class="track-cover"
-            src={base + release.data.cover.replace(/^\//, '')}
-            alt={`${release.data.title} cover`}
-            width="44"
-            height="44"
-            loading="lazy"
-          />
-          <span class="track-title">
-            {release.data.title}
-            {i === 0 && <span class="track-latest">NEW</span>}
-            {release.data.series && <span class="track-series">{release.data.series.toUpperCase()}</span>}
-          </span>
-          <span class="track-date">{release.data.datePublished}</span>
-        </a>
-      ))}
-    </div>
-  </section>
+  <div class="catalog">
+    <TrackList releases={releases} headingId="catalog-h" level={1}>
+      <div class="filters" slot="controls" role="group" aria-label="Filter by bus">
+        <button type="button" class="chip" data-lane="" aria-pressed="true">ALL {pad2(releases.length)}</button>
+        {lanes.map((lane) => (
+          <button type="button" class="chip" data-lane={lane.slug} aria-pressed="false" id={lane.slug}>
+            <span class="chip-bus">{lane.bus}</span> {lane.name} <span class="chip-count">{pad2(lane.count)}</span>
+          </button>
+        ))}
+      </div>
+    </TrackList>
+  </div>
 </Base>
+
+<script>
+  // Progressive enhancement: without JS every row shows. With it, the chips
+  // filter rows by lane and the URL hash carries the selection so the home
+  // page's bus cards can deep-link into a filtered list.
+  const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.chip'));
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('.track-row-wrap'));
+  const count = document.querySelector<HTMLElement>('.section-count');
+  const total = rows.length;
+
+  function apply(lane: string) {
+    let shown = 0;
+    for (const row of rows) {
+      const match = !lane || row.dataset.lane === lane;
+      row.hidden = !match;
+      if (match) {
+        shown += 1;
+        const num = row.querySelector<HTMLElement>('.track-num');
+        if (num) num.textContent = String(shown).padStart(2, '0');
+      }
+    }
+    for (const chip of chips) chip.setAttribute('aria-pressed', String((chip.dataset.lane ?? '') === lane));
+    if (count) count.textContent = lane ? `${String(shown).padStart(2, '0')} of ${String(total).padStart(2, '0')} releases` : `${String(total).padStart(2, '0')} releases`;
+  }
+
+  for (const chip of chips) {
+    chip.addEventListener('click', () => {
+      const lane = chip.dataset.lane ?? '';
+      apply(lane);
+      history.replaceState(null, '', lane ? `#${lane}` : location.pathname);
+    });
+  }
+
+  const initial = location.hash.slice(1);
+  if (initial && chips.some((c) => c.dataset.lane === initial)) apply(initial);
+</script>
 
 <style>
   .catalog { padding-top: 40px; }
-  .section-title { font-size: clamp(20px, 3vw, 26px); }
-  .tracklist { display: flex; flex-direction: column; }
-  .track-row {
-    display: grid;
-    grid-template-columns: 28px 44px 1fr auto;
-    align-items: center;
-    gap: 12px;
-    padding: 8px;
-    border-bottom: 1px solid var(--line-faint);
-    text-decoration: none;
-    color: inherit;
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 14px;
   }
-  .track-row:last-child { border-bottom: none; }
-  .track-num {
+  .chip {
     font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dimmer);
-    font-variant-numeric: tabular-nums;
-  }
-  .track-cover {
-    display: block;
-    border-radius: 2px;
-    border: 1px solid var(--line-faint);
-  }
-  .track-title { font-size: 14px; color: var(--text); }
-  .track-latest {
-    font-family: var(--mono);
-    font-size: 9px;
-    color: var(--accent);
-    border: 1px solid var(--accent-dim);
-    border-radius: 2px;
-    padding: 1px 5px;
-    margin-left: 8px;
-    letter-spacing: 0.06em;
-    vertical-align: 1px;
-  }
-  .track-series {
-    font-family: var(--mono);
-    font-size: 9px;
-    color: var(--text-dimmer);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: 2px;
-    padding: 1px 5px;
-    margin-left: 8px;
-    letter-spacing: 0.06em;
-    vertical-align: 1px;
+    border-radius: 3px;
+    padding: 6px 10px;
+    cursor: pointer;
   }
-  .track-date {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dimmer);
-    font-variant-numeric: tabular-nums;
+  .chip:hover { color: var(--text); border-color: var(--text-dimmer); }
+  .chip[aria-pressed="true"] {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
   }
-  @media (max-width: 480px) {
-    .track-date { display: none; }
-  }
-  .track-row:hover .track-title,
-  .track-row:focus-visible .track-title { color: var(--accent); }
+  .chip-bus { color: var(--text-dimmer); }
+  .chip[aria-pressed="true"] .chip-bus { color: var(--accent-dim); }
+  .chip-count { color: var(--text-dimmer); }
 </style>

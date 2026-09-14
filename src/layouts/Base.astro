@@ -1,16 +1,42 @@
 ---
 import Transport from '../components/Transport.astro';
 import Rail from '../components/Rail.astro';
+import { PLATFORMS } from '../lib/releases';
 import '../styles/tokens.css';
 
 interface Props {
   title: string;
   description: string;
+  /** Absolute or site-relative path to the share image. Defaults to the portrait. */
+  ogImage?: string;
+  /** Extra JSON-LD for the page (a MusicRecording on release pages). */
+  jsonLd?: Record<string, unknown>;
+  /** Which nav item is current: 'index' | 'music' | 'story'. */
+  current?: 'index' | 'music' | 'story';
 }
-const { title, description } = Astro.props;
+const { title, description, ogImage = '/artist-portrait.jpg', jsonLd, current } = Astro.props;
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
+const site = Astro.site ?? new URL('https://chrisgwim.com');
+const canonical = new URL(Astro.url.pathname, site).toString();
+const ogImageAbs = new URL(ogImage, site).toString();
+
+const musicGroup = {
+  '@context': 'https://schema.org',
+  '@type': 'MusicGroup',
+  name: 'Chris Gwim',
+  url: site.toString(),
+  image: ogImageAbs,
+  genre: ['Electronic', 'Techno', 'Classical Fusion', 'House', 'Piano'],
+  sameAs: PLATFORMS.map((p) => p.url),
+};
+
+const nav = [
+  { key: 'index', label: 'INDEX', href: base },
+  { key: 'music', label: 'TRACK LIST', href: `${base}music/` },
+  { key: 'story', label: 'STORY', href: `${base}story/` },
+] as const;
 ---
 <!doctype html>
 <html lang="en">
@@ -20,17 +46,29 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="theme-color" content="#111213" />
+    <link rel="canonical" href={canonical} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Chris Gwim" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImageAbs} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageAbs} />
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="preload" href={`${base}fonts/barlow-condensed-800.woff2`} as="font" type="font/woff2" crossorigin />
+    <link rel="sitemap" href={`${base}sitemap-index.xml`} />
+    <script type="application/ld+json" set:html={JSON.stringify(musicGroup)} />
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
   </head>
   <body>
     <Transport />
     <nav class="site-nav" aria-label="Site">
-      <a href={base}>INDEX</a>
-      <a href={`${base}music/`}>TRACK LIST</a>
+      {nav.map((item) => (
+        <a href={item.href} aria-current={current === item.key ? 'page' : undefined}>{item.label}</a>
+      ))}
     </nav>
     <div class="shell">
       <main class="page">
@@ -39,8 +77,12 @@ const base = import.meta.env.BASE_URL.endsWith('/')
       <Rail />
     </div>
     <footer class="footer">
-      <span>END OF SESSION</span>
-      <a href="mailto:chrisgwim@chrisgwim.com">chrisgwim@chrisgwim.com</a>
+      <span class="footer-end">END OF SESSION</span>
+      <nav class="footer-nav" aria-label="Footer">
+        {nav.map((item) => <a href={item.href}>{item.label}</a>)}
+        <a href="mailto:chrisgwim@chrisgwim.com">CONTACT</a>
+      </nav>
+      <span class="footer-copy">© 2026 Chris Gwim</span>
     </footer>
   </body>
 </html>
@@ -59,22 +101,32 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     letter-spacing: 0.12em;
     color: var(--text-dimmer);
     text-decoration: none;
+    padding-bottom: 2px;
+    border-bottom: 1px solid transparent;
+  }
+  .site-nav a[aria-current="page"] {
+    color: var(--text);
+    border-bottom-color: var(--accent);
   }
   .site-nav a:hover,
   .site-nav a:focus-visible { color: var(--accent); }
   .footer {
     max-width: var(--shell-w);
     margin: 0 auto;
-    padding: 16px 20px 22px;
+    padding: 16px 20px 26px;
     border-top: 1px solid var(--line);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px 20px;
+    flex-wrap: wrap;
     font-family: var(--mono);
     font-size: 10px;
     color: var(--text-dimmer);
     letter-spacing: 0.04em;
   }
-  .footer a { color: var(--text-dim); text-decoration: none; }
-  .footer a:hover { color: var(--text); }
+  .footer-nav { display: flex; gap: 14px; flex-wrap: wrap; }
+  .footer a { color: var(--text-dim); text-decoration: none; letter-spacing: 0.1em; }
+  .footer a:hover,
+  .footer a:focus-visible { color: var(--accent); }
 </style>
