@@ -64,6 +64,9 @@ const releaseHref = `${base}music/${release.id}/`;
     grid-template-columns: minmax(0, 300px) 1fr;
     gap: 20px;
     padding: 16px;
+    /* The art is square; the text column is taller. Without this the frame
+       stretches to the row and the cover sits at the top of an empty box. */
+    align-items: start;
   }
   @media (max-width: 720px) {
     .featured-body { grid-template-columns: 1fr; }
