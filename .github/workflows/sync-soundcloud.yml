@@ -1,0 +1,58 @@
+name: Sync catalog from SoundCloud
+
+# SoundCloud is the source of truth for what is public. This mirrors it into
+# src/content/releases, commits to main, and kicks off the deploy.
+on:
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sync-soundcloud
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Pull the live track list
+        id: sync
+        run: |
+          node scripts/sync-soundcloud.mjs | tee sync.log
+          if [ -n "$(git status --porcelain -- src/content/releases public/covers)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A bad SoundCloud field (unknown lane, missing art) fails here, before
+      # anything reaches main, and the live site keeps its last good build.
+      - name: Build and test
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          npm ci
+          npm test
+
+      - name: Commit and deploy
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/content/releases public/covers
+          count=$(ls src/content/releases/*.json | wc -l)
+          { echo "content: sync catalog from SoundCloud, catalog at $count"; echo; grep -E '^[+~-] ' sync.log; } > msg.txt
+          git commit -F msg.txt
+          git push origin HEAD:main
+          # Pushes made with GITHUB_TOKEN do not trigger other workflows, so the
+          # deploy is dispatched explicitly.
+          gh workflow run deploy.yml --ref main

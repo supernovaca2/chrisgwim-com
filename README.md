@@ -18,8 +18,16 @@ Design source of truth lives in the Claude project folder (`C:\projects\gwim\mus
 
 ## Editing content
 
-**SoundCloud is the source of truth for what is public.** When tracks are added or
-removed there, mirror it here; nothing else on the site needs editing.
+**SoundCloud is the source of truth for what is public.** The `Sync catalog from
+SoundCloud` workflow (`.github/workflows/sync-soundcloud.yml`) runs every 3 hours: it adds
+new uploads, removes tracks gone from SoundCloud, refreshes permalinks and durations,
+runs `npm test`, commits to `main` and dispatches the deploy. Run it now from the Actions
+tab, or locally with `node scripts/sync-soundcloud.mjs [--dry-run]`.
+
+The sync never overwrites hand edits on an existing release (title and description copy,
+`lane`, `genre`, `tags`, `series`, cover art, a store `primaryUrl`). A new upload gets its
+lane from keyword rules in the script (`LANE_RULES`); fix it by editing the JSON, and the
+edit sticks.
 
 - **Add a release:** one JSON file in `src/content/releases/<slug>.json` and a 500×500 JPG at
   `public/covers/<slug>.jpg` (SoundCloud serves it at
