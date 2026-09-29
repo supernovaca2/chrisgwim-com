@@ -17,11 +17,14 @@ const COVERS_DIR = 'public/covers';
 const DRY_RUN = process.argv.includes('--dry-run');
 const UA = { 'user-agent': 'Mozilla/5.0 (chrisgwim.com catalog sync)' };
 
-// First match wins. Only used to pick a lane for a NEW release; existing
-// releases keep whatever lane was chosen by hand.
+// Only used to pick a lane for a NEW release; existing releases keep whatever
+// lane was chosen by hand. Classical material splits on whether it was rebuilt
+// for the club (fusion) or scored straight (orchestral); everything else is
+// matched against SoundCloud's genre field first, then the tags and title, so
+// a "Dance & EDM" track that also carries a "pop" tag lands on House & EDM.
+const CLASSICAL = /classical|orchestra|symphon|cinematic|soundtrack|cello|bach|mozart|beethoven|vivaldi|tchaikovsky|chopin/;
+const FUSION = /fusion|techno|trance|house|club|edm|remix/;
 const LANE_RULES = [
-  ['Classical Fusion', /classical|orchestra|symphon|bach|mozart|beethoven|vivaldi|tchaikovsky|chopin/],
-  ['Piano', /piano/],
   ['Punk & Rock', /punk|rock|metal|grunge/],
   ['Bass', /drum & bass|dnb|trap|dubstep|g-funk|\bbass\b/],
   ['World & Pop', /soca|afro|world|reggae|latin|\bpop\b/],
@@ -63,8 +66,15 @@ const parseTags = (tagList = '') =>
   [...tagList.matchAll(/"([^"]+)"|(\S+)/g)].map((m) => (m[1] ?? m[2]).trim().toLowerCase()).filter(Boolean);
 
 function pickLane(track) {
-  const haystack = [track.genre, track.tag_list, track.title].join(' ').toLowerCase();
-  return LANE_RULES.find(([, re]) => re.test(haystack))?.[0] ?? DEFAULT_LANE;
+  const genre = (track.genre ?? '').toLowerCase();
+  const haystack = [genre, track.tag_list, track.title].join(' ').toLowerCase();
+  if (/piano/.test(genre)) return 'Piano';
+  if (CLASSICAL.test(haystack)) return FUSION.test(haystack) ? 'Classical Fusion' : 'Orchestral';
+  return (
+    LANE_RULES.find(([, re]) => re.test(genre))?.[0] ??
+    LANE_RULES.find(([, re]) => re.test(haystack))?.[0] ??
+    DEFAULT_LANE
+  );
 }
 
 const cleanDescription = (text) => (text ?? '').replace(/\s+/g, ' ').trim() || undefined;

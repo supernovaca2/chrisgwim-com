@@ -17,6 +17,7 @@ const releases = defineCollection({
     genre: z.string(),
     lane: z.enum([
       'Classical Fusion',
+      'Orchestral',
       'Techno & Trance',
       'House & EDM',
       'Bass',

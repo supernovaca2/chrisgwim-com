@@ -1,7 +1,8 @@
 # chrisgwim-com
 
 Chris Gwim's artist site, chrisgwim.com. Astro static site in the Studio Console design
-system, deployed to GitHub Pages via Actions on push to `main` (tests gate the deploy).
+system (Signal Blue theme since 2026-09-28), deployed to GitHub Pages via Actions on push
+to `main` (tests gate the deploy).
 
 Design source of truth lives in the Claude project folder (`C:\projects\gwim\music\Reference\`):
 `chrisgwim-brand.md` (tokens, identity, decision log) and
@@ -26,8 +27,10 @@ tab, or locally with `node scripts/sync-soundcloud.mjs [--dry-run]`.
 
 The sync never overwrites hand edits on an existing release (title and description copy,
 `lane`, `genre`, `tags`, `series`, cover art, a store `primaryUrl`). A new upload gets its
-lane from keyword rules in the script (`LANE_RULES`); fix it by editing the JSON, and the
-edit sticks.
+lane from the rules in the script: solo piano by genre, classical material split into
+`Classical Fusion` (rebuilt for the club) or `Orchestral` (scored straight), then `LANE_RULES`
+against SoundCloud's genre field first and the tags second. Fix a wrong pick by editing the
+JSON, and the edit sticks.
 
 - **Add a release:** one JSON file in `src/content/releases/<slug>.json` and a 500×500 JPG at
   `public/covers/<slug>.jpg` (SoundCloud serves it at
