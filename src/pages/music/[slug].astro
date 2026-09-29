@@ -1,7 +1,9 @@
 ---
 import Base from '../../layouts/Base.astro';
+import TrackList from '../../components/TrackList.astro';
 import {
   getReleases,
+  LANES,
   fmtDuration,
   isoDuration,
   laneSlug,
@@ -20,11 +22,15 @@ export async function getStaticPaths() {
       total: releases.length,
       newer: releases[i - 1] ?? null,
       older: releases[i + 1] ?? null,
+      // The rest of this release's bus, newest first, for the "also on" list.
+      busMates: releases.filter((r) => r.data.lane === release.data.lane && r.id !== release.id),
     },
   }));
 }
 
-const { release, index, total, newer, older } = Astro.props;
+const { release, index, total, newer, older, busMates } = Astro.props;
+const bus = LANES.find((l) => l.name === release.data.lane)?.bus ?? '';
+const related = busMates.slice(0, 4);
 const {
   title, datePublished, cover, primaryUrl, series, genre, lane, durationMs,
   soundcloudId, soundcloudUrl, description, tags,
@@ -125,6 +131,19 @@ const jsonLd = {
       </div>
     </div>
   </section>
+
+  {related.length > 0 && (
+    <TrackList
+      releases={related}
+      total={busMates.length}
+      title={`Also on Bus ${bus}`}
+      headingId="related-h"
+      markLatest={false}
+      count={`${pad2(busMates.length)} more on ${lane}`}
+      allHref={`${base}music/#${laneSlug(lane)}`}
+      allLabel={`ALL ${pad2(busMates.length + 1)} ON ${lane.toUpperCase()}`}
+    />
+  )}
 
   <nav class="release-nav" aria-label="Adjacent releases">
     {older ? (
@@ -241,11 +260,14 @@ const jsonLd = {
     gap: 8px;
     margin: 0 0 32px;
   }
+  /* Two columns on phones: PREV pinned left, NEXT pinned right (so the
+     oldest release's lone NEXT link does not drift to the left column),
+     TRACK LIST full width underneath. */
   @media (max-width: 560px) {
     .release-nav { grid-template-columns: 1fr 1fr; }
     .release-nav-all { grid-column: 1 / -1; order: 3; }
     .release-nav-empty { display: none; }
-    .release-nav-link:only-of-type { grid-column: 1 / -1; }
+    .release-nav-next { grid-column: 2; }
   }
   .release-nav-link {
     display: flex;

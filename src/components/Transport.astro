@@ -43,7 +43,7 @@ const latest = releases[0];
   .rec-dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--red);
-    box-shadow: 0 0 0 2px rgba(192, 69, 61, 0.18);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 20%, transparent);
   }
   @media (prefers-reduced-motion: no-preference) {
     .rec-dot { animation: pulse 2.2s ease-in-out infinite; }

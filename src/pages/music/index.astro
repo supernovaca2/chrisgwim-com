@@ -61,8 +61,14 @@ const lanes = LANES.map((lane) => ({
     });
   }
 
-  const initial = location.hash.slice(1);
-  if (initial && chips.some((c) => c.dataset.lane === initial)) apply(initial);
+  // Also on hashchange, so a bus link followed while already on this page
+  // (same document, no reload) still switches the filter.
+  function applyHash() {
+    const lane = location.hash.slice(1);
+    apply(chips.some((c) => c.dataset.lane === lane) ? lane : '');
+  }
+  applyHash();
+  addEventListener('hashchange', applyHash);
 </script>
 
 <style>
