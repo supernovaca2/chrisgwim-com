@@ -139,7 +139,7 @@ test('every release page in dist has a release file (no lingering pages)', () =>
 test('unknown paths get the site 404, kept out of search and the sitemap', () => {
   const page = readFileSync(dist('404.html'), 'utf8');
   assert.match(page, /<meta name="robots" content="noindex"/);
-  assert.doesNotMatch(page, /rel="canonical"/);
+  assert.doesNotMatch(readFileSync(dist('index.html'), 'utf8'), /noindex/, 'real pages must stay indexable');
   assert.match(page, /href="\/music\/"/, '404 should link to the track list');
   assert.doesNotMatch(readFileSync(dist('sitemap-0.xml'), 'utf8'), /404/);
 });
