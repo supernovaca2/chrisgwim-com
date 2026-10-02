@@ -7,12 +7,13 @@ export type Release = CollectionEntry<'releases'>;
 // must match one of these names exactly (the schema enforces it).
 export const LANES = [
   { name: 'Classical Fusion', bus: 'A', blurb: 'Symphonic motifs rebuilt at club tempo' },
-  { name: 'Techno & Trance', bus: 'B', blurb: 'Melodic techno, trance, story tracks' },
-  { name: 'House & EDM', bus: 'C', blurb: 'Progressive, melodic house, synthwave' },
-  { name: 'Bass', bus: 'D', blurb: 'Drum & bass, trap, G-funk low end' },
-  { name: 'Piano', bus: 'E', blurb: 'Solo piano and baroque crossover' },
-  { name: 'Punk & Rock', bus: 'F', blurb: 'Synth punk, electro punk, grunge' },
-  { name: 'World & Pop', bus: 'G', blurb: 'Soca, afrobeats, pop' },
+  { name: 'Orchestral', bus: 'B', blurb: 'Scores for brass, strings, cello and piano' },
+  { name: 'Techno & Trance', bus: 'C', blurb: 'Melodic techno, trance, story tracks' },
+  { name: 'House & EDM', bus: 'D', blurb: 'Progressive, melodic house, synthwave' },
+  { name: 'Bass', bus: 'E', blurb: 'Drum & bass, trap, G-funk low end' },
+  { name: 'Piano', bus: 'F', blurb: 'Solo piano and baroque crossover' },
+  { name: 'Punk & Rock', bus: 'G', blurb: 'Synth punk, electro punk, grunge' },
+  { name: 'World & Pop', bus: 'H', blurb: 'Soca, afrobeats, pop' },
 ] as const;
 
 export type LaneName = (typeof LANES)[number]['name'];
@@ -56,7 +57,7 @@ export const platformName = (url: string) => {
 
 // Keep in sync with --accent in src/styles/tokens.css. The SoundCloud embed
 // takes a literal hex in its query string and cannot read a custom property.
-export const ACCENT_HEX = '9ece6a';
+export const ACCENT_HEX = '5cc8ff';
 
 export const playerSrc = (soundcloudId: number) =>
   `https://w.soundcloud.com/player/?url=https%3A%2F%2Fapi.soundcloud.com%2Ftracks%2F${soundcloudId}` +

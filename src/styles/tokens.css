@@ -16,18 +16,21 @@
   src: url("/fonts/barlow-condensed-800.woff2") format("woff2");
 }
 
+/* Theme: Signal Blue (2026-09-28). Deep blue-black chrome, one accent — the
+   cyan of a console's signal LED. Red stays reserved for the rec indicator.
+   Contrast on --bg: accent 10.3:1, text 15.9:1, text-dim 6.4:1, text-dimmer 4.1:1. */
 :root {
-  --bg: #111213;
-  --panel: #1a1b1d;
-  --panel-raised: #202224;
-  --line: #3a3b3d;
-  --line-faint: #2a2b2d;
-  --text: #e8e6e1;
-  --text-dim: #8f8d89;
-  --text-dimmer: #605e5b;
-  --accent: #9ece6a;
-  --accent-dim: #4a6130;
-  --red: #c0453d;
+  --bg: #0b0e13;
+  --panel: #12161d;
+  --panel-raised: #181d26;
+  --line: #2c3442;
+  --line-faint: #1f2632;
+  --text: #e6e9ef;
+  --text-dim: #8d95a3;
+  --text-dimmer: #6b7383;
+  --accent: #5cc8ff;
+  --accent-dim: #245272;
+  --red: #e0524a;
   --console-w: 800px;
   --rail-w: 200px;
   --rail-gap: 28px;
@@ -46,8 +49,8 @@ html, body {
   color: var(--text);
   font-family: var(--body);
   background:
-    repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 28px),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(0deg, rgba(92,200,255,0.035) 0px, rgba(92,200,255,0.035) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(90deg, rgba(92,200,255,0.035) 0px, rgba(92,200,255,0.035) 1px, transparent 1px, transparent 28px),
     var(--bg);
   -webkit-font-smoothing: antialiased;
 }
@@ -178,11 +181,12 @@ img { max-width: 100%; }
 .jack:hover,
 .jack:focus-visible { border-color: var(--text-dimmer); }
 
-/* Small mono tag: NEW, series, lane, genre. */
+/* Small mono tag: NEW, series, lane, genre. 10px is the floor for any text
+   that carries meaning; 9px is reserved for decorative unit labels. */
 .tag {
   display: inline-block;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dimmer);

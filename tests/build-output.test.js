@@ -48,22 +48,28 @@ test('CNAME survives the build into dist', () => {
   assert.equal(readFileSync(dist('CNAME'), 'utf8').trim(), 'chrisgwim.com');
 });
 
-test('the new accent reaches the build', () => {
-  const found = textFiles().some((f) => /9ece6a/i.test(readFileSync(f, 'utf8')));
-  assert.ok(found, 'expected accent #9ece6a somewhere in dist');
+// Signal Blue (2026-09-28). The accent is a literal hex in two places the
+// token cannot reach: the SoundCloud embed's color param and this test.
+const ACCENT = '5cc8ff';
+test('the current accent reaches the build, including the SoundCloud embed', () => {
+  const found = textFiles().some((f) => new RegExp(ACCENT, 'i').test(readFileSync(f, 'utf8')));
+  assert.ok(found, `expected accent #${ACCENT} somewhere in dist`);
+  const home = readFileSync(dist('index.html'), 'utf8');
+  assert.match(home, new RegExp(`color=%23${ACCENT}`, 'i'), 'the SoundCloud embed must use the current accent');
 });
 
-// Six places bypassed the --amber token, including the SoundCloud embed's own
-// color param. Any survivor leaves the page visibly half-repainted.
-test('no legacy amber survives anywhere in the build', () => {
+// Earlier themes bypassed the token in several places, including the embed's
+// own color param. Any survivor leaves the page visibly half-repainted.
+test('no legacy accent survives anywhere in the build', () => {
+  const legacy = [/e2a33f/i, /226,\s*163,\s*63/, /9ece6a/i, /158,\s*206,\s*106/, /#111213/i, /#1a1b1d/i];
   const offenders = textFiles().filter((f) => {
     const body = readFileSync(f, 'utf8');
-    return /e2a33f/i.test(body) || /226,\s*163,\s*63/.test(body);
+    return legacy.some((re) => re.test(body));
   });
   assert.deepEqual(
     offenders.map((f) => f.replace(distRoot, 'dist')),
     [],
-    'legacy amber found in built output'
+    'legacy amber, green or graphite found in built output'
   );
 });
 

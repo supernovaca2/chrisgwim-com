@@ -13,7 +13,15 @@ interface Props {
   level?: 1 | 2;
   /** Whether the first row is the newest release in the catalog. */
   markLatest?: boolean;
+  /** Overrides the count readout in the section head. */
+  count?: string;
+  /** Where the "see all" row points and what it says (defaults to the full catalog). */
+  allHref?: string;
+  allLabel?: string;
 }
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
 const {
   releases,
   total = releases.length,
@@ -21,18 +29,16 @@ const {
   title = 'Track list',
   level = 2,
   markLatest = true,
+  count = releases.length < total ? `latest ${pad2(releases.length)} of ${pad2(total)}` : `${pad2(total)} releases`,
+  allHref = `${base}music/`,
+  allLabel = `ALL ${pad2(total)} RELEASES`,
 } = Astro.props;
 const Heading = level === 1 ? 'h1' : 'h2';
-const base = import.meta.env.BASE_URL.endsWith('/')
-  ? import.meta.env.BASE_URL
-  : import.meta.env.BASE_URL + '/';
 ---
 <section class="section" aria-labelledby={headingId}>
   <div class="section-head">
     <Heading class="section-title" id={headingId}>{title}</Heading>
-    <span class="section-count">
-      {releases.length < total ? `latest ${pad2(releases.length)} of ${pad2(total)}` : `${pad2(total)} releases`}
-    </span>
+    <span class="section-count">{count}</span>
   </div>
   <slot name="controls" />
   <ol class="tracklist">
@@ -65,8 +71,8 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     ))}
   </ol>
   {releases.length < total && (
-    <a class="track-all" href={`${base}music/`}>
-      <span>ALL {pad2(total)} RELEASES</span>
+    <a class="track-all" href={allHref}>
+      <span>{allLabel}</span>
       <span aria-hidden="true">→</span>
     </a>
   )}

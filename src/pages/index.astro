@@ -55,9 +55,11 @@ const base = import.meta.env.BASE_URL.endsWith('/')
 </Base>
 
 <style>
+  /* No inline padding: the page already insets 20px, and the hero's left edge
+     must line up with the rack units below it. */
   .hero {
     position: relative;
-    padding: 52px 12px 40px;
+    padding: 52px 0 40px;
     overflow: hidden;
   }
   .dial {
