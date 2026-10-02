@@ -168,3 +168,23 @@ test('no audio file is shipped from this origin', () => {
   const audio = walk(distRoot).filter((f) => /\.(mp3|wav|flac|ogg|m4a|aac)$/i.test(f));
   assert.deepEqual(audio, [], 'audio must be streamed from a platform, never self-hosted');
 });
+
+// Spotify for Artists verifies a requester by finding their email publicly
+// shown next to the artist. A mailto href behind a "CONTACT" label is invisible
+// to a reviewer, so the address has to be readable text on every page.
+test('the contact email is visible text on every page and in the JSON-LD', () => {
+  const email = 'chrisgwim@chrisgwim.com';
+  const pages = walk(distRoot).filter((f) => f.endsWith('.html'));
+  assert.ok(pages.length > 0, 'expected built pages');
+  const hidden = pages.filter((f) => {
+    const visible = readFileSync(f, 'utf8')
+      .replace(/<script[\s\S]*?<\/script>/g, ' ')
+      .replace(/<style[\s\S]*?<\/style>/g, ' ')
+      .replace(/<[^>]+>/g, ' ');
+    return !visible.includes(email);
+  });
+  assert.deepEqual(hidden, [], `email not visible as text in: ${hidden.join(', ')}`);
+
+  const home = readFileSync(dist('index.html'), 'utf8');
+  assert.match(home, /"email":"chrisgwim@chrisgwim\.com"/, 'MusicGroup JSON-LD should carry the email');
+});
