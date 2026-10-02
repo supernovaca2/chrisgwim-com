@@ -1,0 +1,50 @@
+---
+// GitHub Pages serves dist/404.html for any unknown path. The SoundCloud sync
+// deletes a release page when its track goes private, so old shared links land here.
+import Base from '../layouts/Base.astro';
+import { getReleases } from '../lib/releases';
+
+const latest = (await getReleases())[0];
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
+---
+<Base
+  title="Signal not found — Chris Gwim"
+  description="This page is not on chrisgwim.com. The full catalog is on the track list."
+  noindex
+>
+  <section class="unit lost">
+    <div class="unit-label">
+      <span>ERROR 404 — NO SIGNAL</span>
+      <span class="live">● MUTED</span>
+    </div>
+    <div class="unit-body lost-body">
+      <h1 class="lost-title">Nothing on this channel.</h1>
+      <p class="lost-copy">
+        The track may have been pulled from the catalog, or the link is mistyped.
+        Everything that is out right now is on the track list.
+      </p>
+      <div class="lost-actions">
+        <a class="jack" href={`${base}music/`}><span class="jack-dot"></span>TRACK LIST</a>
+        <a class="jack" href={`${base}music/${latest.id}/`}><span class="jack-dot"></span>LATEST: {latest.data.title}</a>
+        <a class="jack" href={base}><span class="jack-dot"></span>INDEX</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .lost { margin: 32px 0; }
+  .lost-body { padding: 28px 20px 32px; }
+  .lost-title {
+    font-family: var(--display);
+    font-size: clamp(32px, 7vw, 56px);
+    line-height: 1;
+    text-transform: uppercase;
+    margin: 0 0 14px;
+    overflow-wrap: anywhere;
+  }
+  .lost-copy { max-width: 52ch; color: var(--text-dim); margin: 0 0 22px; }
+  .lost-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+</style>

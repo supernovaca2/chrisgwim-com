@@ -13,8 +13,10 @@ interface Props {
   jsonLd?: Record<string, unknown>;
   /** Which nav item is current: 'index' | 'music' | 'story'. */
   current?: 'index' | 'music' | 'story';
+  /** Keep the page out of search results (the 404). */
+  noindex?: boolean;
 }
-const { title, description, ogImage = '/artist-portrait.jpg', jsonLd, current } = Astro.props;
+const { title, description, ogImage = '/artist-portrait.jpg', jsonLd, current, noindex = false } = Astro.props;
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
@@ -51,7 +53,7 @@ const nav = [
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="theme-color" content="#111213" />
-    <link rel="canonical" href={canonical} />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
