@@ -22,11 +22,16 @@ const site = Astro.site ?? new URL('https://chrisgwim.com');
 const canonical = new URL(Astro.url.pathname, site).toString();
 const ogImageAbs = new URL(ogImage, site).toString();
 
+// Shown as visible footer text, not just a mailto href: Spotify for Artists
+// reviewers need to SEE the address next to the artist to verify a request.
+const CONTACT_EMAIL = 'chrisgwim@chrisgwim.com';
+
 const musicGroup = {
   '@context': 'https://schema.org',
   '@type': 'MusicGroup',
   name: 'Chris Gwim',
   url: site.toString(),
+  email: CONTACT_EMAIL,
   image: ogImageAbs,
   genre: ['Electronic', 'Techno', 'Classical Fusion', 'House', 'Piano'],
   sameAs: PLATFORMS.map((p) => p.url),
@@ -80,7 +85,10 @@ const nav = [
       <span class="footer-end">END OF SESSION</span>
       <nav class="footer-nav" aria-label="Footer">
         {nav.map((item) => <a href={item.href}>{item.label}</a>)}
-        <a href="mailto:chrisgwim@chrisgwim.com">CONTACT</a>
+        <span class="footer-contact">
+          <span class="footer-label">CONTACT</span>
+          <a class="footer-email" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+        </span>
       </nav>
       <span class="footer-copy">© 2026 Chris Gwim</span>
     </footer>
@@ -126,6 +134,9 @@ const nav = [
     letter-spacing: 0.04em;
   }
   .footer-nav { display: flex; gap: 14px; flex-wrap: wrap; }
+  .footer-contact { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .footer-label { letter-spacing: 0.1em; }
+  .footer .footer-email { letter-spacing: 0.04em; }
   .footer a { color: var(--text-dim); text-decoration: none; letter-spacing: 0.1em; }
   .footer a:hover,
   .footer a:focus-visible { color: var(--accent); }
