@@ -125,13 +125,23 @@ test('every release in the collection builds a page with its own player', () => 
   }
 });
 
-test('tracks removed from SoundCloud have no lingering pages', () => {
-  const removed = [
-    'area-51', 'julians-shadow', 'passion-de-violin', 'sector-nexus',
-    'lost-track', 'tonight-right-now', 'vesper-infinity',
-  ];
-  const lingering = removed.filter((slug) => existsSync(dist(`music/${slug}/index.html`)));
-  assert.deepEqual(lingering, [], 'stale release pages found in dist');
+// Checks the invariant, not a list of slugs: a hardcoded "removed" list failed the
+// sync when Julian's Shadow was made public again on 2026-10-02.
+test('every release page in dist has a release file (no lingering pages)', () => {
+  const known = new Set(releases().map((r) => r.slug));
+  const pages = readdirSync(dist('music'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  assert.deepEqual(pages.filter((slug) => !known.has(slug)), [], 'release pages with no release file');
+  assert.equal(pages.length, known.size, 'every release file should build a page');
+});
+
+test('unknown paths get the site 404, kept out of search and the sitemap', () => {
+  const page = readFileSync(dist('404.html'), 'utf8');
+  assert.match(page, /<meta name="robots" content="noindex"/);
+  assert.doesNotMatch(page, /rel="canonical"/);
+  assert.match(page, /href="\/music\/"/, '404 should link to the track list');
+  assert.doesNotMatch(readFileSync(dist('sitemap-0.xml'), 'utf8'), /404/);
 });
 
 test('every release has exactly one SoundCloud id, and ids are unique', () => {
