@@ -1,5 +1,6 @@
 ---
 import { getReleases, LANES, laneSlug, pad2 } from '../lib/releases';
+import { coverThumb } from '../lib/thumbs';
 
 const releases = await getReleases();
 const base = import.meta.env.BASE_URL.endsWith('/')
@@ -24,7 +25,7 @@ const lanes = LANES.map((lane) => {
         <span class="lane-foot">
           <span class="lane-covers" aria-hidden="true">
             {lane.tracks.slice(0, 3).map((r) => (
-              <img src={base + r.data.cover.replace(/^\//, '')} alt="" width="28" height="28" loading="lazy" />
+              <img src={coverThumb(r.data.cover, base)} alt="" width="28" height="28" loading="lazy" />
             ))}
           </span>
           <span class="lane-count">{pad2(lane.tracks.length)} {lane.tracks.length === 1 ? 'track' : 'tracks'}</span>

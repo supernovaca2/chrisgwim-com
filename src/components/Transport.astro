@@ -19,7 +19,7 @@ const latest = releases[0];
   </div>
   <div class="transport-right">
     <span><b>{pad2(releases.length)}</b> TRACKS</span>
-    <span><b>{pad2(buses)}</b> BUSES</span>
+    <span class="transport-buses"><b>{pad2(buses)}</b> BUSES</span>
     <span class="transport-latest">LATEST <b>{latest.data.datePublished}</b></span>
   </div>
 </header>
@@ -53,5 +53,9 @@ const latest = releases[0];
   @media (max-width: 560px) {
     .transport-right { gap: 10px; }
     .transport-latest { display: none; }
+  }
+  /* Both readouts plus the session name overflow a 320px phone. */
+  @media (max-width: 380px) {
+    .transport-buses { display: none; }
   }
 </style>

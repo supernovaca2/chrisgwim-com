@@ -1,6 +1,7 @@
 ---
 import type { Release } from '../lib/releases';
 import { fmtDuration, laneSlug, pad2 } from '../lib/releases';
+import { coverThumb } from '../lib/thumbs';
 
 interface Props {
   releases: Release[];
@@ -42,7 +43,7 @@ const base = import.meta.env.BASE_URL.endsWith('/')
           <span class="track-num mono">{pad2(i + 1)}</span>
           <img
             class="track-cover"
-            src={base + release.data.cover.replace(/^\//, '')}
+            src={coverThumb(release.data.cover, base)}
             alt=""
             width="44"
             height="44"
@@ -95,8 +96,14 @@ const base = import.meta.env.BASE_URL.endsWith('/')
     font-size: 11px;
     color: var(--text-dimmer);
   }
+  /* Fills its grid column as a square: the phone layout narrows the column
+     to 40px, and the 44px height attribute alone squashed the art. */
   .track-cover {
     display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
     border-radius: 2px;
     border: 1px solid var(--line-faint);
     background: var(--bg);

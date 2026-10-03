@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
 
 const distRoot = fileURLToPath(new URL('../dist', import.meta.url));
 const dist = (file) => fileURLToPath(new URL(`../dist/${file}`, import.meta.url));
@@ -197,4 +198,39 @@ test('the contact email is visible text on every page and in the JSON-LD', () =>
 
   const home = readFileSync(dist('index.html'), 'utf8');
   assert.match(home, /"email":"chrisgwim@chrisgwim\.com"/, 'MusicGroup JSON-LD should carry the email');
+});
+
+// Phones narrow the track-list cover column to 40px; with only the 44px
+// width/height attributes every cover rendered squashed by 9%.
+test('track-list covers stay square at any column width', () => {
+  const page = readFileSync(dist('music/index.html'), 'utf8') + homepageStyles();
+  assert.match(page, /\.track-cover[^{]*\{[^}]*aspect-ratio:\s*1[^}]*\}/, 'track-cover needs aspect-ratio: 1');
+  assert.match(page, /\.track-cover[^{]*\{[^}]*width:\s*100%[^}]*\}/, 'track-cover should fill its column');
+});
+
+// The transport bar's two readouts plus the session name overflow a 320px phone.
+test('the transport drops the bus readout on the narrowest phones', () => {
+  const page = readFileSync(dist('index.html'), 'utf8') + homepageStyles();
+  assert.match(page, /class="transport-buses[^"]*"/);
+  assert.match(page, /(max-width:\s*380px|width\s*<=\s*380px)\)?\s*\{[^}]*\.transport-buses[^{]*\{\s*display:\s*none/);
+});
+
+// Covers are 500x500 (~65 KB); the lists draw them at 28-44px.
+test('track list and lane cards load small cover thumbnails', async () => {
+  for (const { slug, cover } of releases()) {
+    const file = cover.replace(/^\/covers\//, '');
+    const thumb = dist(`covers/thumbs/${file}`);
+    assert.ok(existsSync(thumb), `missing thumbnail for ${slug}`);
+    const { width, height, size } = await sharp(thumb).metadata().then(async (m) => ({ ...m, size: readFileSync(thumb).length }));
+    assert.equal(width, 132, `${slug} thumb width`);
+    assert.equal(height, 132, `${slug} thumb height`);
+    assert.ok(size < 20_000, `${slug} thumb is ${size} bytes`);
+  }
+  const listed = [...readFileSync(dist('music/index.html'), 'utf8').matchAll(/<img class="track-cover" src="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(listed.length, releases().length, 'one cover per track row');
+  assert.deepEqual(listed.filter((src) => !src.startsWith('/covers/thumbs/')), [], 'track rows must use thumbnails');
+  const laneImgs = [...readFileSync(dist('index.html'), 'utf8').matchAll(/<span class="lane-covers"[^>]*>([\s\S]*?)<\/span>/g)]
+    .flatMap((m) => [...m[1].matchAll(/src="([^"]+)"/g)].map((s) => s[1]));
+  assert.ok(laneImgs.length > 0, 'expected lane-card covers');
+  assert.deepEqual(laneImgs.filter((src) => !src.startsWith('/covers/thumbs/')), [], 'lane cards must use thumbnails');
 });
