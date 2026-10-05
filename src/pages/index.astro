@@ -32,9 +32,32 @@ const year = (iso: string) => iso.slice(0, 4);
       description={`Chris Gwim: ${releases.length} releases across ${lanes.length} lanes, from classical fusion and melodic techno to piano and synth punk. Explore the catalog as an open world, or browse it as a list. Now premiering: ${newest.title}.`}
       viewport="width=device-width, initial-scale=1, viewport-fit=cover"
     />
+    {/* Two scripts, in this order. The first is the page without the game; it is small enough
+        that Astro writes it into the page, so it runs even if the second never arrives. */}
+    <script>
+      import '../game/shell.js';
+    </script>
+    <script>
+      import overworld from '../game/overworld.js';
+
+      document.documentElement.dataset.game = 'on';      // shell.js looks for this mark
+      // The classical series used to be a section of this page. Old links to /#series follow it.
+      if (location.hash === '#series') location.replace(new URL('music/#series', document.baseURI).href);
+
+      overworld().catch((err) => {
+        console.error(err);
+        document.dispatchEvent(new CustomEvent('overworld:failed', { detail: 'The 3D world could not start in this browser, so here is every release.' }));
+      });
+    </script>
   </head>
-  <body>
-    <canvas id="scene" tabindex="-1" aria-label="A playable 3D world. Pilot a glider between Chris Gwim's releases. The track list reaches every release without playing."></canvas>
+  {/* .booting is in the markup, not added by script, so the cover below is up from the very
+      first paint. The game removes the class when the world is ready to be seen. */}
+  <body class="booting">
+    <div class="boot" role="status" aria-label="Loading Overworld">
+      <div class="track"><i id="boot-bar"></i></div>
+      {/* Shown by CSS alone after a few seconds, so it is there even when the script is what is slow. */}
+      <p class="boot-late"><span class="label">Building the world</span><a href={links.catalog}>Taking a while? Browse the catalog instead.</a></p>
+    </div>
     <div class="vignette" aria-hidden="true"></div>
     <div class="rush" id="rush" aria-hidden="true"></div>
     <div class="bars" aria-hidden="true"><i></i><i></i></div>
@@ -49,6 +72,8 @@ const year = (iso: string) => iso.slice(0, 4);
     </header>
 
     <main>
+      {/* Fixed behind everything; it lives in main so that it sits inside a landmark. */}
+      <canvas id="scene" tabindex="-1" aria-label="A playable 3D world. Pilot a glider between Chris Gwim's releases. The track list reaches every release without playing."></canvas>
       <section class="title" id="title" aria-labelledby="title-h">
         <p class="presents">Gwim Entertainment presents</p>
         <h1 id="title-h">Chris Gwim</h1>
@@ -56,11 +81,6 @@ const year = (iso: string) => iso.slice(0, 4);
         <noscript>
           <p class="noscript">Overworld is a game and needs JavaScript. Everything in it is also in <a href={links.catalog}>the catalog</a>.</p>
         </noscript>
-        <div class="load" id="load" role="status" hidden>
-          <div class="track"><i id="load-bar"></i></div>
-          <span class="label">Building the world</span>
-          <a class="load-help" href={links.catalog}>Taking a while? Browse the catalog instead.</a>
-        </div>
         <ul class="menu" id="menu" hidden>
           <li><button type="button" data-act="continue" hidden>Continue <small id="menu-progress"></small></button></li>
           <li><button type="button" data-act="start">Start</button></li>
@@ -164,7 +184,7 @@ const year = (iso: string) => iso.slice(0, 4);
           <button class="ghost" type="button" id="p-prev">← Prev</button>
           <button class="ghost" type="button" id="p-next">Next →</button>
         </div>
-        <button class="ghost" type="button" id="p-close"><kbd>Esc</kbd> Back to the world</button>
+        <button class="ghost" type="button" id="p-close" aria-label="Back to the world"><kbd>Esc</kbd> Back<span class="more"> to the world</span></button>
       </div>
     </aside>
 
@@ -243,17 +263,5 @@ const year = (iso: string) => iso.slice(0, 4);
     </section>
 
     <script id="data" type="application/json" set:html={safeJson(data)} />
-    <script>
-      import overworld from '../game/overworld.js';
-      import { showFallback } from '../game/fallback.js';
-
-      // The loader is hidden in the markup so a visitor without JavaScript never
-      // sees "Building the world" with nothing building it.
-      document.getElementById('load').hidden = false;
-      overworld().catch((err) => {
-        console.error(err);
-        showFallback('The 3D world could not start in this browser, so here is every release.');
-      });
-    </script>
   </body>
 </html>

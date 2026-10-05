@@ -9,10 +9,28 @@ const CONTACT = DATA.contact;
 const PLATFORMS = DATA.platforms;
 
 const $ = (id) => document.getElementById(id);
+// The loading cover's bar: the script arriving, the fonts, then each texture.
+const bootBar = $('boot-bar');
+const bootProgress = (p) => { if (bootBar) bootBar.style.setProperty('--p', p.toFixed(3)); };
+bootProgress(0.15);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const small = matchMedia('(max-width: 760px)').matches;
-const coarse = matchMedia('(pointer: coarse)').matches || document.body.classList.contains('touch');
-if (coarse) document.body.classList.add('touch');
+// A phone-sized screen, either way up: a lighter world (coarser terrain, no shadow map, fewer particles).
+const small = matchMedia('(max-width: 760px), (max-height: 560px)').matches;
+// The shape of the screen right now. A phone can be turned mid-game, so these are asked each
+// time rather than read once. They mirror the layouts at the end of overworld.css.
+const upright = () => innerWidth < innerHeight * 0.85;      // taller than wide: a wider lens, the camera farther back
+const sheetLayout = () => matchMedia('(max-width: 760px) and (min-height: 561px)').matches;      // the release panel is a bottom sheet
+// Touch controls. On from the start when the main pointer is a finger; 06_game.js also turns
+// them on at the first real touch, for a laptop with a touch screen or a tablet with a trackpad.
+let touchMode = false;
+function useTouch() {
+  if (touchMode) return false;
+  touchMode = true;
+  document.body.classList.add('touch');
+  $('pr-key').textContent = 'Tap';
+  return true;
+}
+if (matchMedia('(pointer: coarse)').matches) useTouch();
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -68,7 +86,6 @@ const persist = () => {
 const laneFound = (lane) => lane.tracks.filter((r) => save.found.has(r.slug)).length;
 
 // ---------- Track list: rendered by the server as plain links, taken over here ----------
-paintLanes();
 const trackRows = new Map();
 document.querySelectorAll('#tl-lanes .tl-row').forEach((row) => trackRows.set(row.dataset.slug, row));
 for (const lane of lanes) {
@@ -88,13 +105,14 @@ refreshTrackList();
 
 // Without WebGL 2 the track list is the whole page: every release, linked.
 const GL_OK = (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch (err) { return false; } })();
-if (!GL_OK) { showFallback('This browser cannot draw the 3D world, so here is every release.'); return; }
+if (!GL_OK) { document.dispatchEvent(new CustomEvent('overworld:failed', { detail: 'This browser cannot draw the 3D world, so here is every release.' })); return; }
 
 // Sign and plate lettering is drawn to canvas, so the faces must be in first.
 await Promise.race([
   Promise.all(['900 64px "Big Shoulders Display Variable"', '800 64px "Big Shoulders Display Variable"', '500 24px "Geist Mono Variable"', '600 16px "Instrument Sans Variable"'].map((f) => document.fonts.load(f))),
   new Promise((done) => setTimeout(done, 2500)),
 ]).catch(() => {});
+bootProgress(0.3);
 
 // ---------- Deterministic noise ----------
 function hash(ix, iz) {

@@ -16,8 +16,8 @@ const MAX_ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog('#c58393', 110, 1250);
-const BASE_FOV = small ? 70 : 56;
-const camera = new THREE.PerspectiveCamera(BASE_FOV, viewW() / viewH(), 0.3, 3400);
+const baseFov = () => (upright() ? 70 : 56);
+const camera = new THREE.PerspectiveCamera(baseFov(), viewW() / viewH(), 0.3, 3400);
 camera.position.set(0, 16, 70);
 
 // Multisampled HDR target: flat-shaded dunes alias badly without it.

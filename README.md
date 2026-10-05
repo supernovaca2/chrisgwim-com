@@ -12,7 +12,7 @@ red accent.
 
 | Route | What it is |
 |---|---|
-| `/` | Overworld. A hover glider, a dusk desert, the newest release premiering at the hub, one district per lane, one monolith per release. Driving up to a monolith lights its beacon; a release plays in SoundCloud's own player, docked in the corner. The whole catalog is also in the page as plain links (the track list), which is what a crawler reads and what the page becomes without WebGL |
+| `/` | Overworld. A hover glider, a dusk desert, the newest release premiering at the hub, one district per lane, one monolith per release. Driving up to a monolith lights its beacon; a release plays in SoundCloud's own player, docked in the corner. The whole catalog is also in the page as plain links (the track list), which is what a crawler reads and what the page becomes without WebGL or when the game's script cannot load. A cover hides the page until the world is ready to be seen |
 | `/music/` | The catalog: every release as a poster, with a lane filter (`#<lane-slug>` deep-links a filter), then the classical series (`#series`) |
 | `/music/<slug>/` | Release page: letterbox, player, notes and details, more from the lane, prev/next, MusicRecording JSON-LD |
 | `/story/` | Bio, the facts, every lane and its tracks, press note |
@@ -113,7 +113,8 @@ refuses, no third-party host in the build, no debug handle in production code.
 
 Published site 1 GB, source repository 1 GB (recommended), bandwidth 100 GB a month (soft),
 10 builds an hour (soft), 10 minutes per deployment. The site is about 9 MB; a first visit to
-the home page is under 1 MB. `npm test` fails long before any limit: `dist/` and `public/`
+the home page is about 0.9 MB on a phone and 1 MB on a desktop (measured 2026-10-05: 160 KB
+of script, 90 KB of fonts, the rest cover art). `npm test` fails long before any limit: `dist/` and `public/`
 over 250 MB, any single file over 5 MB, the home page's code over 300 KB gzipped.
 
 ## Commands

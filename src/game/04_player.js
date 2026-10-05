@@ -1,6 +1,6 @@
 
 // ---------- The glider ----------
-const game = { mode: 'boot', overlay: null, time: 0, started: false, finale: 0, traveling: false };
+const game = { mode: 'boot', overlay: null, time: 0, started: false, finale: 0, finaleCard: false, traveling: false };
 const input = { throttle: 0, steer: 0, boost: false, drift: false };
 const SPAWN = { x: 0, z: 38, yaw: 0 };
 const player = {
@@ -213,20 +213,27 @@ function stepPlayer(dt) {
 
   p.pos.x += p.vel.x * dt; p.pos.z += p.vel.z * dt;
 
-  // Circles: push out along the normal and keep the sliding part of the velocity.
-  for (let i = 0; i < colliders.length; i++) {
-    const c = colliders[i], dx = p.pos.x - c.x, dz = p.pos.z - c.z, min = c.r + P.radius;
-    if (dx > min || dx < -min || dz > min || dz < -min) continue;
-    const d2 = dx * dx + dz * dz;
-    if (d2 >= min * min || d2 < 1e-6) continue;
-    const dist = Math.sqrt(d2), nx = dx / dist, nz = dz / dist;
-    p.pos.x = c.x + nx * min; p.pos.z = c.z + nz * min;
-    const vn = p.vel.x * nx + p.vel.z * nz;
-    if (vn < 0) {
-      p.vel.x -= 1.25 * vn * nx; p.vel.z -= 1.25 * vn * nz;
-      p.vel.multiplyScalar(0.9);
-      if (vn < -7) p.bump = Math.max(p.bump, Math.min(1, -vn / 40));
+  // Circles: push out along the normal and keep the sliding part of the velocity. In the corner
+  // between two props, leaving one circle can mean entering the other, so it is done until
+  // nothing touches (three rounds is plenty; most frames need one).
+  for (let round = 0; round < 3; round++) {
+    let touched = false;
+    for (let i = 0; i < colliders.length; i++) {
+      const c = colliders[i], dx = p.pos.x - c.x, dz = p.pos.z - c.z, min = c.r + P.radius;
+      if (dx > min || dx < -min || dz > min || dz < -min) continue;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= min * min - 1e-9 || d2 < 1e-6) continue;
+      touched = true;
+      const dist = Math.sqrt(d2), nx = dx / dist, nz = dz / dist;
+      p.pos.x = c.x + nx * min; p.pos.z = c.z + nz * min;
+      const vn = p.vel.x * nx + p.vel.z * nz;
+      if (vn < 0) {
+        p.vel.x -= 1.25 * vn * nx; p.vel.z -= 1.25 * vn * nz;
+        p.vel.multiplyScalar(0.9);
+        if (vn < -7) p.bump = Math.max(p.bump, Math.min(1, -vn / 40));
+      }
     }
+    if (!touched) break;
   }
   // The world ends in mountains; a soft wall turns you around before them.
   const r = Math.hypot(p.pos.x, p.pos.z);
@@ -275,12 +282,13 @@ function stepPlayer(dt) {
 }
 
 // ---------- Camera ----------
-const cam = { mode: 'title', pos: new THREE.Vector3(0, 16, 70), look: new THREE.Vector3(0, 9, 0), tPos: new THREE.Vector3(), tLook: new THREE.Vector3(), fov: BASE_FOV, snap: true, shake: 0, orbit: 0, ease: 0 };
+const cam = { mode: 'title', pos: new THREE.Vector3(0, 16, 70), look: new THREE.Vector3(0, 9, 0), tPos: new THREE.Vector3(), tLook: new THREE.Vector3(), fov: baseFov(), snap: true, shake: 0, orbit: 0, ease: 0 };
 const camTmp = new THREE.Vector3();
 function inspectView(cx, cy, cz, nx, nz, size) {
   const side = (player.pos.x - cx) * nx + (player.pos.z - cz) * nz >= 0 ? 1 : -1;
   const Nx = nx * side, Nz = nz * side, rx = Nz, rz = -Nx;        // the viewer's right when facing the slab
-  if (small) {
+  if (sheetLayout()) {
+    // The panel is a sheet over the lower half: the slab goes in the upper half.
     const D = size * 2.5 + 3;
     cam.tPos.set(cx + Nx * D, cy - size * 0.1, cz + Nz * D);
     cam.tLook.set(cx, cy - size * 0.72, cz);
@@ -311,22 +319,23 @@ function armLimit(px, pz, tx, tz, ty) {
 }
 function updateCamera(dt) {
   const p = player;
-  let ratePos = 12, rateY = 4.5, rateLook = 12, fovT = BASE_FOV;
+  const tall = upright();
+  let ratePos = 12, rateY = 4.5, rateLook = 12, fovT = baseFov();
   if (cam.mode === 'title') {
     cam.orbit += dt * (reduced ? 0.008 : 0.04);
-    const a = cam.orbit + 0.3, R = small ? 104 : 92, off = small ? 0 : 40;
+    const a = cam.orbit + 0.3, R = tall ? 104 : 92, off = tall ? 0 : 40;
     cam.tPos.set(Math.sin(a) * R, 27 + Math.sin(cam.orbit * 0.7) * 3, Math.cos(a) * R);
-    cam.tLook.set(-Math.cos(a) * off, small ? -6 : -2, Math.sin(a) * off);
+    cam.tLook.set(-Math.cos(a) * off, tall ? -6 : -2, Math.sin(a) * off);
     ratePos = rateY = rateLook = 3;
   } else if (cam.mode === 'inspect') {
     ratePos = rateY = rateLook = 3.6;
-    fovT = BASE_FOV - 4;
+    fovT = baseFov() - 4;
   } else {
     const fx = Math.sin(p.yaw), fz = -Math.cos(p.yaw), k = clamp(p.speed / P.vboost, 0, 1);
-    const dist = (small ? 13.5 : 11.8) + k * 1.6, height = (small ? 6 : 4.9) + k * 0.5;
+    const dist = (tall ? 13.5 : 11.8) + k * 1.6, height = (tall ? 6 : 4.9) + k * 0.5;
     cam.tPos.set(p.pos.x - fx * dist, p.pos.y + height, p.pos.z - fz * dist);
     cam.tLook.set(p.pos.x + fx * (7 + k * 6), p.pos.y + 2.1, p.pos.z + fz * (7 + k * 6));
-    fovT = BASE_FOV + (reduced ? 0 : k * 9 + (p.boosting ? 6 : 0));
+    fovT = baseFov() + (reduced ? 0 : k * 9 + (p.boosting ? 6 : 0));
     // Pull the camera in front of anything solid, and lift it as the arm shortens.
     const clear = armLimit(p.pos.x, p.pos.z, cam.tPos.x, cam.tPos.z, cam.tPos.y);
     if (clear < 1) {

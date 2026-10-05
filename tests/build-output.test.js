@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 
 const distRoot = fileURLToPath(new URL('../dist', import.meta.url));
@@ -188,6 +189,8 @@ test('every release page in dist has a release file (no lingering pages)', () =>
 test('unknown paths get the site 404, kept out of search and the sitemap', () => {
   const page = readFileSync(dist('404.html'), 'utf8');
   assert.match(page, /<meta name="robots" content="noindex"/);
+  // It is served for every unknown path, so it has no address of its own to declare.
+  assert.doesNotMatch(page, /rel="canonical"|property="og:url"/, 'the 404 must not claim a canonical address');
   assert.doesNotMatch(home(), /noindex/, 'real pages must stay indexable');
   assert.match(page, /href="\/music\/"/, '404 should link to the catalog');
   assert.doesNotMatch(readFileSync(dist('sitemap-0.xml'), 'utf8'), /404/);
@@ -336,9 +339,95 @@ test('catalog text cannot break out of a data block, and release links are https
   }
 });
 
+// Astro writes small scripts into the page and lists a hash for each in the policy. A script
+// in the markup without its hash is refused by the browser, silently, on the live site only.
+test('every script written into a page is one the policy lists by hash', () => {
+  for (const page of htmlPages()) {
+    const html = readFileSync(page, 'utf8');
+    const allowed = directive(cspOf(html), 'script-src');
+    for (const [, attrs, body] of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
+      if (/\ssrc=/.test(attrs) || /type="application\/(?:ld\+)?json"/.test(attrs) || !body.trim()) continue;
+      const hash = `'sha256-${createHash('sha256').update(body).digest('base64')}'`;
+      assert.ok(allowed.includes(hash), `${rel(page)}: an inline script is not in the policy (${body.slice(0, 60)}...)`);
+    }
+  }
+});
+
 test('the production build carries no debug handle', () => {
   const offenders = walk(dist('_astro')).filter((f) => f.endsWith('.js') && /__ow\b/.test(readFileSync(f, 'utf8')));
   assert.deepEqual(offenders.map(rel), [], 'window.__ow is for development builds only');
+});
+
+// --- Loading and controls (2026-10-05) -----------------------------------------
+// The home page takes a moment to build a world. Until it has, the visitor sees a
+// cover, never the half-made page behind it (which read as "the old site" for a
+// moment on every visit). And if the game cannot arrive at all, the page becomes
+// its track list. Neither may depend on the game's own script having loaded.
+
+// Everything that styles the home page: its linked stylesheet, and the small sheets Astro
+// writes into the page (the display and body @font-face rules end up there).
+const homeCss = () => {
+  const sheets = [...home().matchAll(/<link[^>]*rel="stylesheet"[^>]*href="(\/_astro\/[^"]+\.css)"/g)].map((m) => readFileSync(dist(m[1].replace(/^\//, '')), 'utf8'));
+  assert.ok(sheets.length >= 1, 'expected the home page to link its stylesheet');
+  const inline = [...home().matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
+  return [...sheets, ...inline].join('\n');
+};
+
+test('the loading cover is up from the first paint and never needs script to come down', () => {
+  const html = home();
+  assert.match(html, /<body class="booting">\s*<div class="boot"/, 'the cover and the class that raises it must be in the markup, first thing in the body');
+  const cover = html.match(/<div class="boot"[\s\S]*?<\/p>\s*<\/div>/);
+  assert.ok(cover, 'expected the cover to carry its late help line');
+  assert.match(cover[0], /href="\/music\/"/, 'a slow load must be offered the catalog from the cover itself');
+  const css = homeCss();
+  assert.match(css, /\.booting \.boot\{[^}]*animation:[^}]*boot-giveup/, 'the cover must lift by itself as a last resort');
+  assert.match(css, /\.booting \.boot-late\{[^}]*animation:/, 'the help line must appear by CSS alone');
+  assert.match(css, /@media \(scripting:\s*none\)\{[^}]*\.boot/, 'with scripting off there must be no cover');
+  // The stylesheet has to be a blocking link in the head, or the first paint is the bare page.
+  assert.match(html.slice(0, html.indexOf('</head>')), /<link[^>]*rel="stylesheet"/, 'the home stylesheet must be linked in the head');
+});
+
+// Measured 2026-10-05 in WebKit: a preloaded font is, more often than not, downloaded a second
+// time when the stylesheet asks for it, because the two requests are not matched while the
+// first is still in flight. The home page hides its title until the faces are in anyway.
+test('no font is preloaded', () => {
+  for (const page of htmlPages()) {
+    assert.doesNotMatch(readFileSync(page, 'utf8'), /<link[^>]*rel="preload"[^>]*as="font"/, `${rel(page)}: a font preload (Safari fetches these twice)`);
+  }
+});
+
+test('the page without the game is written into the page, ahead of the game', () => {
+  const html = home();
+  const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].map((m) => ({ attrs: m[1], body: m[2], at: m.index }));
+  const shell = scripts.find((s) => !/\ssrc=/.test(s.attrs) && /overworld:failed/.test(s.body));
+  assert.ok(shell, 'src/game/shell.js should be inlined into the home page (it must import nothing and stay small)');
+  assert.match(shell.attrs, /type="module"/);
+  assert.doesNotMatch(shell.body, /\bimport\b/, 'the shell must not depend on another file');
+  assert.match(shell.body, /DOMContentLoaded/, 'the shell must notice a game script that never arrived');
+  const game = scripts.find((s) => /\ssrc="\/_astro\/[^"]+\.js"/.test(s.attrs));
+  assert.ok(game, 'expected the game as an external module script');
+  assert.ok(shell.at < game.at, 'the shell must come before the game: module scripts run in order');
+  // Both ends of the contract between them.
+  const chunk = readFileSync(dist(game.attrs.match(/src="\/([^"]+)"/)[1]), 'utf8');
+  assert.match(chunk, /overworld:failed/, 'the game reports failure to the shell by this event');
+  assert.match(chunk, /dataset\.game\s*=/, 'the game marks the page when it starts');
+  assert.match(shell.body, /dataset/, 'and the shell looks for that mark');
+});
+
+// The HUD lets touches through to the world (pointer-events: none), and the two thumb buttons
+// are not <button> elements. Without their own pointer-events they never received a touch:
+// Boost and Drift did nothing on every phone until 2026-10-05.
+test('the touch controls can be touched, and clear the notch', () => {
+  const css = homeCss();
+  assert.match(css, /\.hud\{[^}]*pointer-events:\s*none/, 'expected the HUD to let touches through');
+  for (const sel of ['\\.stick', '\\.pad-btn']) {
+    const rule = css.match(new RegExp(`${sel}\\{[^}]*\\}`));
+    assert.ok(rule, `expected a rule for ${sel}`);
+    assert.match(rule[0], /pointer-events:\s*auto/, `${sel} must take pointer events back`);
+    assert.match(rule[0], /touch-action:\s*none/, `${sel} must not scroll or zoom the page`);
+  }
+  assert.match(home(), /<meta name="viewport" content="[^"]*viewport-fit=cover/, 'the game draws under the notch');
+  for (const side of ['left', 'right', 'top', 'bottom']) assert.match(css, new RegExp(`env\\(safe-area-inset-${side}`), `the interface must respect the ${side} safe area`);
 });
 
 // --- GitHub Pages limits (2026-10-05) ------------------------------------------

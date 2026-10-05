@@ -82,7 +82,8 @@ img { max-width: 100%; }
   font-size: 14px;
   color: var(--text-dim);
 }
-.section-aside a { color: var(--text); }
+/* Padded so a thumb can hit a short text link. */
+.section-aside a { display: inline-block; padding-block: 7px; color: var(--text); }
 .section-aside a:hover,
 .section-aside a:focus-visible { color: var(--accent); }
 

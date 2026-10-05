@@ -100,5 +100,11 @@ export default defineConfig({
   site: 'https://chrisgwim.com',
   integrations: [sitemap(), coverImages()],
   security: { csp: { directives: CSP_DIRECTIVES } },
-  vite: { plugins: [overworldParts()] },
+  // No page has a code block. Shiki would color one with inline styles, which the policy refuses.
+  markdown: { syntaxHighlight: false },
+  // The dev toolbar sits at the bottom center of the page, on top of the game's thumb controls.
+  devToolbar: { enabled: false },
+  // The game and three.js ship as one 590 KB chunk (156 KB gzipped), loaded by the home page
+  // only. That is expected; tests/build-output.test.js holds the real budget.
+  vite: { plugins: [overworldParts()], build: { chunkSizeWarningLimit: 700 } },
 });
