@@ -6,14 +6,18 @@
 // genre, tags, series, cover art (several use the distribution artwork rather
 // than SoundCloud's), and a primaryUrl that points at a streaming store.
 //
-// Usage: node scripts/sync-soundcloud.mjs [--dry-run]
+//
+// Usage: node scripts/sync-soundcloud.mjs [--dry-run]   (needs `npm ci` first, for sharp)
 import { readdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import sharp from 'sharp';
 
 const PROFILE_URL = 'https://soundcloud.com/chrisgwim/tracks';
 const RELEASES_DIR = 'src/content/releases';
 const COVERS_DIR = 'public/covers';
+// Hi-res art for the letterbox heroes; the build crops it (see astro.config.mjs).
+const HD_DIR = 'public/covers/hd';
 const DRY_RUN = process.argv.includes('--dry-run');
 const UA = { 'user-agent': 'Mozilla/5.0 (chrisgwim.com catalog sync)' };
 
@@ -78,7 +82,23 @@ async function downloadCover(track, slug) {
   const res = await fetch(src.replace('-large.', '-t500x500.'), { headers: UA });
   if (!res.ok) throw new Error(`cover ${res.status} for ${slug}`);
   if (!DRY_RUN) await writeFile(path, Buffer.from(await res.arrayBuffer()));
+  await downloadHdCover(src, slug);
   return true;
+}
+
+// Fetched only together with the 500px cover, so both always come from the
+// same artwork. Covers replaced by hand get no hi-res file and the build falls
+// back to the 500px one. Originals arrive as JPEG or PNG at 500-3000px; they are
+// stored as JPEG, at most 1200px.
+async function downloadHdCover(src, slug) {
+  const res = await fetch(src.replace('-large.', '-original.'), { headers: UA });
+  if (!res.ok) return;
+  const jpeg = await sharp(Buffer.from(await res.arrayBuffer()))
+    .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+    .flatten({ background: '#000000' })
+    .jpeg({ quality: 85, mozjpeg: true })
+    .toBuffer();
+  if (!DRY_RUN) await writeFile(join(HD_DIR, `${slug}.jpg`), jpeg);
 }
 
 async function loadReleases() {
@@ -145,6 +165,8 @@ for (const { slug, data } of releases) {
     await unlink(join(RELEASES_DIR, `${slug}.json`));
     const cover = join('public', data.cover.replace(/^\//, ''));
     if (existsSync(cover)) await unlink(cover);
+    const hd = join(HD_DIR, `${slug}.jpg`);
+    if (existsSync(hd)) await unlink(hd);
   }
   log.push(`- ${slug}`);
 }

@@ -1,5 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Letterbox from '../../components/Letterbox.astro';
+import PosterGrid from '../../components/PosterGrid.astro';
 import {
   getReleases,
   fmtDuration,
@@ -7,8 +9,9 @@ import {
   laneSlug,
   pad2,
   platformName,
-  playerSrc,
+  dateLong,
 } from '../../lib/releases';
+import { coverThumb } from '../../lib/images';
 
 export async function getStaticPaths() {
   const releases = await getReleases();
@@ -20,14 +23,15 @@ export async function getStaticPaths() {
       total: releases.length,
       newer: releases[i - 1] ?? null,
       older: releases[i + 1] ?? null,
+      sameLane: releases.filter((r) => r.data.lane === release.data.lane && r.id !== release.id).slice(0, 4),
     },
   }));
 }
 
-const { release, index, total, newer, older } = Astro.props;
+const { release, index, total, newer, older, sameLane } = Astro.props;
 const {
   title, datePublished, cover, primaryUrl, series, genre, lane, durationMs,
-  soundcloudId, soundcloudUrl, description, tags,
+  soundcloudUrl, description, tags,
 } = release.data;
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
@@ -37,9 +41,9 @@ const isSoundCloud = primaryUrl.includes('soundcloud.com');
 const primaryPlatform = platformName(primaryUrl);
 const site = Astro.site ?? new URL('https://chrisgwim.com');
 const pageUrl = new URL(`${base}music/${release.id}/`, site).toString();
-// Track number counts from the first release, so it never shifts when a new
+// Release number counts from the first release, so it never shifts when a new
 // track lands at the top of the list.
-const trackNo = total - index;
+const releaseNo = total - index;
 
 const metaDescription = isSoundCloud
   ? `${title} by Chris Gwim, ${genre}, ${fmtDuration(durationMs)}. Released ${datePublished}. Listen on SoundCloud.`
@@ -65,219 +69,179 @@ const jsonLd = {
   jsonLd={jsonLd}
   current="music"
 >
-  <article class="release">
-    <div class="release-cover-frame unit">
-      <div class="unit-label">
-        <span>TRACK {pad2(trackNo)} — {datePublished}</span>
-        {series && <span class="series-tag">SERIES: {series.toUpperCase()}</span>}
-      </div>
-      <img class="release-cover" src={coverSrc} alt={`${title} cover art`} width="500" height="500" fetchpriority="high" />
-    </div>
+  <Letterbox release={release} eyebrow={`Release ${pad2(releaseNo)} · ${dateLong(datePublished)}`} />
 
-    <div class="release-meta">
-      <p class="release-kicker">{lane}</p>
-      <h1 class="release-title">{title}</h1>
-      <table class="meta-table">
-        <tbody>
-          <tr><td>RELEASED</td><td>{datePublished}</td></tr>
-          <tr><td>GENRE</td><td>{genre}</td></tr>
-          <tr><td>BUS</td><td><a href={`${base}music/#${laneSlug(lane)}`}>{lane}</a></td></tr>
-          <tr><td>LENGTH</td><td>{fmtDuration(durationMs)}</td></tr>
-          <tr><td>ARTIST</td><td>Chris Gwim</td></tr>
-          {series && <tr><td>SERIES</td><td>{series}</td></tr>}
-        </tbody>
-      </table>
-      {description && <p class="release-notes">{description}</p>}
-      {tags.length > 0 && (
-        <p class="release-tags">
-          {tags.map((tag) => <span class="tag">{tag}</span>)}
-        </p>
+  <section class="wrap section notes" aria-label="About this release">
+    <div class="notes-copy">
+      {description ? (
+        <>
+          <h2 class="notes-title">Notes</h2>
+          <p class="notes-text">{description}</p>
+        </>
+      ) : (
+        <img class="notes-cover" src={coverSrc} alt={`${title} cover art`} width="500" height="500" loading="lazy" />
       )}
-      <div class="release-links">
-        <a class="jack" href={primaryUrl} target="_blank" rel="noopener">
-          <span class="jack-dot" aria-hidden="true"></span>
-          <span>Listen on {primaryPlatform} ↗</span>
-        </a>
-        {!isSoundCloud && (
-          <a class="jack" href={soundcloudUrl} target="_blank" rel="noopener">
-            <span class="jack-dot" aria-hidden="true"></span>
-            <span>SoundCloud ↗</span>
-          </a>
-        )}
-      </div>
+      {tags.length > 0 && (
+        <ul class="tags">
+          {tags.map((tag) => <li>{tag}</li>)}
+        </ul>
+      )}
     </div>
-  </article>
-
-  <section class="unit player-unit" aria-label={`Play ${title}`}>
-    <div class="unit-label">
-      <span>CH {pad2(trackNo)} — {title.toUpperCase()}</span>
-      <span class="live">● LIVE</span>
-    </div>
-    <div class="unit-body">
-      <div class="player-shell">
-        <iframe
-          height="166"
-          scrolling="no"
-          frameborder="no"
-          allow="autoplay"
-          title={`${title} by Chris Gwim on SoundCloud`}
-          src={playerSrc(soundcloudId)}></iframe>
-      </div>
-    </div>
+    <dl class="details">
+      <div><dt>Released</dt><dd>{dateLong(datePublished)}</dd></div>
+      <div><dt>Genre</dt><dd>{genre}</dd></div>
+      <div><dt>Lane</dt><dd><a href={`${base}music/#${laneSlug(lane)}`}>{lane}</a></dd></div>
+      <div><dt>Length</dt><dd class="tabular">{fmtDuration(durationMs)}</dd></div>
+      {series && <div><dt>Series</dt><dd>{series}</dd></div>}
+      <div><dt>Written and produced by</dt><dd>Chris Gwim</dd></div>
+    </dl>
   </section>
 
-  <nav class="release-nav" aria-label="Adjacent releases">
+  {sameLane.length > 0 && (
+    <section class="wrap section" aria-labelledby="lane-h">
+      <div class="section-head">
+        <h2 class="section-title" id="lane-h">More {lane}</h2>
+        <p class="section-aside"><a href={`${base}music/#${laneSlug(lane)}`}>The whole lane</a></p>
+      </div>
+      <PosterGrid releases={sameLane} variant="feature" />
+    </section>
+  )}
+
+  <nav class="wrap adjacent" aria-label="Adjacent releases">
     {older ? (
-      <a class="release-nav-link" href={`${base}music/${older.id}/`}>
-        <span class="release-nav-dir">← PREV</span>
-        <span class="release-nav-title">{older.data.title}</span>
+      <a class="adjacent-link" href={`${base}music/${older.id}/`}>
+        <img src={coverThumb(older.data.cover, base)} alt="" width="64" height="64" loading="lazy" />
+        <span><span class="adjacent-dir">← Previous</span><span class="adjacent-title">{older.data.title}</span></span>
       </a>
-    ) : <span class="release-nav-empty" aria-hidden="true" />}
-    <a class="release-nav-link release-nav-all" href={`${base}music/`}>
-      <span class="release-nav-dir">TRACK LIST</span>
-      <span class="release-nav-title">{pad2(total)} releases</span>
+    ) : <span aria-hidden="true"></span>}
+    <a class="adjacent-link adjacent-all" href={`${base}music/`}>
+      <span><span class="adjacent-dir">Catalogue</span><span class="adjacent-title">All {total} releases</span></span>
     </a>
     {newer ? (
-      <a class="release-nav-link release-nav-next" href={`${base}music/${newer.id}/`}>
-        <span class="release-nav-dir">NEXT →</span>
-        <span class="release-nav-title">{newer.data.title}</span>
+      <a class="adjacent-link adjacent-next" href={`${base}music/${newer.id}/`}>
+        <span><span class="adjacent-dir">Next →</span><span class="adjacent-title">{newer.data.title}</span></span>
+        <img src={coverThumb(newer.data.cover, base)} alt="" width="64" height="64" loading="lazy" />
       </a>
-    ) : <span class="release-nav-empty" aria-hidden="true" />}
+    ) : <span aria-hidden="true"></span>}
   </nav>
 </Base>
 
 <style>
-  .release {
+  .notes {
     display: grid;
-    grid-template-columns: minmax(0, 440px) 1fr;
-    gap: 28px;
-    padding: 40px 0 28px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+    gap: 40px 64px;
     align-items: start;
   }
-  @media (max-width: 700px) {
-    .release { grid-template-columns: 1fr; }
+  @media (max-width: 900px) {
+    .notes { grid-template-columns: minmax(0, 1fr); }
   }
-  .series-tag { color: var(--accent); }
-  .release-cover {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / 1;
-    object-fit: cover;
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .release-cover { animation: reveal 0.6s ease-out; }
-  }
-  @keyframes reveal {
-    from { opacity: 0; transform: scale(0.985); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  .release-meta { min-width: 0; }
-  .release-kicker {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 0 0 8px;
-  }
-  .release-title {
+  .notes-title {
+    margin: 0 0 16px;
     font-family: var(--display);
     font-weight: 800;
-    font-size: clamp(34px, 6vw, 56px);
+    font-size: 32px;
     text-transform: uppercase;
-    letter-spacing: 0.01em;
-    margin: 0 0 18px;
-    line-height: 0.92;
-    text-wrap: balance;
   }
-  .meta-table {
+  .notes-text {
+    margin: 0;
+    max-width: 62ch;
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--text-soft);
+  }
+  .notes-cover {
+    display: block;
     width: 100%;
-    border-collapse: collapse;
-    font-family: var(--mono);
-    font-size: 11px;
-    margin: 0 0 18px;
+    max-width: 420px;
+    height: auto;
+    aspect-ratio: 1;
   }
-  .meta-table td {
-    padding: 7px 0;
-    border-bottom: 1px solid var(--line-faint);
-  }
-  .meta-table td:first-child {
-    color: var(--text-dimmer);
-    letter-spacing: 0.08em;
-    width: 96px;
-  }
-  .meta-table td:last-child { color: var(--text); }
-  .meta-table a { text-decoration: none; border-bottom: 1px solid var(--line); }
-  .meta-table a:hover,
-  .meta-table a:focus-visible { color: var(--accent); border-bottom-color: var(--accent-dim); }
-  .release-notes {
-    font-size: 15px;
-    line-height: 1.6;
-    color: var(--text-dim);
-    margin: 0 0 16px;
-  }
-  .release-tags {
+  .tags {
+    list-style: none;
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin: 0 0 18px;
-  }
-  .release-links {
-    display: flex;
-    flex-direction: column;
     gap: 8px;
+    margin: 24px 0 0;
+    padding: 0;
   }
-  .player-unit { margin: 0 0 28px; }
-  .player-shell {
-    border-radius: 3px;
-    overflow: hidden;
-    border: 1px solid var(--line-faint);
+  .tags li {
+    padding: 6px 10px;
+    border: 1px solid var(--line-strong);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
   }
-  .player-shell iframe { display: block; width: 100%; border: 0; }
-  .release-nav {
+  .details {
+    margin: 0;
+    border-top: 1px solid var(--line-strong);
+  }
+  .details div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .details dt {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .details dd {
+    margin: 0;
+    text-align: right;
+    font-size: 15px;
+  }
+  .details a:hover,
+  .details a:focus-visible { color: var(--accent); }
+  .adjacent {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
-    gap: 8px;
-    margin: 0 0 32px;
+    gap: 12px;
+    padding-block: 24px 80px;
   }
-  @media (max-width: 560px) {
-    .release-nav { grid-template-columns: 1fr 1fr; }
-    .release-nav-all { grid-column: 1 / -1; order: 3; }
-    .release-nav-empty { display: none; }
-    .release-nav-link:only-of-type { grid-column: 1 / -1; }
+  @media (max-width: 700px) {
+    .adjacent { grid-template-columns: 1fr; }
+    .adjacent > span { display: none; }
   }
-  .release-nav-link {
+  .adjacent-link {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 10px 12px;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    padding: 12px;
     border: 1px solid var(--line);
-    border-radius: 3px;
     background: var(--panel);
     text-decoration: none;
-    min-width: 0;
   }
-  .release-nav-next { text-align: right; }
-  .release-nav-all { text-align: center; }
-  .release-nav-link:hover,
-  .release-nav-link:focus-visible { border-color: var(--accent-dim); }
-  .release-nav-dir {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    color: var(--text-dimmer);
-  }
-  .release-nav-title {
-    font-family: var(--display);
+  .adjacent-link:hover,
+  .adjacent-link:focus-visible { border-color: var(--text-dim); }
+  .adjacent-next { justify-content: flex-end; text-align: right; }
+  .adjacent-all { justify-content: center; text-align: center; padding-inline: 24px; }
+  .adjacent-link img { flex: none; width: 64px; height: 64px; object-fit: cover; }
+  .adjacent-link > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .adjacent-dir {
+    font-size: 12px;
     font-weight: 600;
-    font-size: 16px;
-    line-height: 1.1;
-    color: var(--text);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .adjacent-title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 22px;
+    line-height: 1;
+    text-transform: uppercase;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .release-nav-link:hover .release-nav-title,
-  .release-nav-link:focus-visible .release-nav-title { color: var(--accent); }
+  .adjacent-link:hover .adjacent-title,
+  .adjacent-link:focus-visible .adjacent-title { color: var(--accent); }
 </style>

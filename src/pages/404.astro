@@ -10,41 +10,41 @@ const base = import.meta.env.BASE_URL.endsWith('/')
   : import.meta.env.BASE_URL + '/';
 ---
 <Base
-  title="Signal not found — Chris Gwim"
-  description="This page is not on chrisgwim.com. The full catalog is on the track list."
+  title="Not showing — Chris Gwim"
+  description="This page is not on chrisgwim.com. The full catalogue is one click away."
   noindex
 >
-  <section class="unit lost">
-    <div class="unit-label">
-      <span>ERROR 404 — NO SIGNAL</span>
-      <span class="live">● MUTED</span>
-    </div>
-    <div class="unit-body lost-body">
-      <h1 class="lost-title">Nothing on this channel.</h1>
-      <p class="lost-copy">
-        The track may have been pulled from the catalog, or the link is mistyped.
-        Everything that is out right now is on the track list.
-      </p>
-      <div class="lost-actions">
-        <a class="jack" href={`${base}music/`}><span class="jack-dot"></span>TRACK LIST</a>
-        <a class="jack" href={`${base}music/${latest.id}/`}><span class="jack-dot"></span>LATEST: {latest.data.title}</a>
-        <a class="jack" href={base}><span class="jack-dot"></span>INDEX</a>
-      </div>
+  <section class="wrap lost">
+    <p class="eyebrow">Error 404 · not showing</p>
+    <h1 class="lost-title">This reel<br />is missing.</h1>
+    <p class="lost-copy">
+      The track may have been pulled from the catalogue, or the link is mistyped.
+      Everything that is out right now is in the catalogue.
+    </p>
+    <div class="lost-actions">
+      <a class="btn btn-primary" href={`${base}music/`}>The catalogue</a>
+      <a class="btn" href={`${base}music/${latest.id}/`}>Now showing: {latest.data.title}</a>
+      <a class="btn" href={base}>Home</a>
     </div>
   </section>
 </Base>
 
 <style>
-  .lost { margin: 32px 0; }
-  .lost-body { padding: 28px 20px 32px; }
+  .lost { padding-block: 96px 112px; }
   .lost-title {
+    margin: 0 0 24px;
     font-family: var(--display);
-    font-size: clamp(32px, 7vw, 56px);
-    line-height: 1;
+    font-weight: 900;
+    font-size: clamp(64px, 11vw, 176px);
+    line-height: 0.84;
     text-transform: uppercase;
-    margin: 0 0 14px;
-    overflow-wrap: anywhere;
   }
-  .lost-copy { max-width: 52ch; color: var(--text-dim); margin: 0 0 22px; }
-  .lost-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .lost-copy {
+    margin: 0 0 32px;
+    max-width: 52ch;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text-soft);
+  }
+  .lost-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 </style>

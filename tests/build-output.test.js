@@ -22,22 +22,20 @@ function walk(dir) {
 
 // Every text asset the browser will actually receive.
 const textFiles = () => walk(distRoot).filter((f) => /\.(html|css|js)$/.test(f));
+const htmlPages = () => walk(distRoot).filter((f) => f.endsWith('.html'));
 
-// All the CSS the homepage actually ships, whether Astro emits an external
-// stylesheet or inlines it into index.html (it inlines any sheet under ~4KB).
-// Concatenating both keeps CSS assertions valid across that threshold.
-const homepageStyles = () => {
-  const css = textFiles()
-    .filter((f) => f.endsWith('.css'))
-    .map((f) => readFileSync(f, 'utf8'))
-    .join('\n');
-  const inline = readFileSync(dist('index.html'), 'utf8');
-  return css + inline;
-};
+// All the CSS the site ships, whether Astro emits an external stylesheet or
+// inlines it into the page (it inlines any sheet under ~4KB). Concatenating
+// both keeps CSS assertions valid across that threshold.
+const shippedStyles = () =>
+  textFiles().filter((f) => f.endsWith('.css')).map((f) => readFileSync(f, 'utf8')).join('\n') +
+  readFileSync(dist('index.html'), 'utf8');
 
 const releaseFiles = () => readdirSync(releasesDir).filter((f) => f.endsWith('.json'));
 const releases = () =>
   releaseFiles().map((f) => ({ slug: f.replace(/\.json$/, ''), ...JSON.parse(readFileSync(`${releasesDir}/${f}`, 'utf8')) }));
+const newestFirst = () =>
+  releases().sort((a, b) => b.datePublished.localeCompare(a.datePublished) || a.title.localeCompare(b.title));
 
 test('the homepage is generated', () => {
   assert.ok(existsSync(dist('index.html')), 'dist/index.html should exist');
@@ -49,59 +47,64 @@ test('CNAME survives the build into dist', () => {
   assert.equal(readFileSync(dist('CNAME'), 'utf8').trim(), 'chrisgwim.com');
 });
 
-test('the new accent reaches the build', () => {
-  const found = textFiles().some((f) => /9ece6a/i.test(readFileSync(f, 'utf8')));
-  assert.ok(found, 'expected accent #9ece6a somewhere in dist');
+// --- Premiere (2026-10-04) --------------------------------------------------
+
+// The accent is a literal hex in two places the CSS token cannot reach: the
+// SoundCloud embed's color param and this test.
+const ACCENT = 'ff3d3d';
+test('the current accent reaches the build, including the SoundCloud embed', () => {
+  assert.match(shippedStyles(), new RegExp(`#${ACCENT}`, 'i'), `expected --accent #${ACCENT} in shipped CSS`);
+  assert.match(readFileSync(dist('index.html'), 'utf8'), new RegExp(`color=%23${ACCENT}`, 'i'),
+    'the SoundCloud embed must use the current accent');
 });
 
-// Six places bypassed the --amber token, including the SoundCloud embed's own
-// color param. Any survivor leaves the page visibly half-repainted.
-test('no legacy amber survives anywhere in the build', () => {
+// Earlier themes bypassed their tokens in several places, including the embed's
+// own color param. Any survivor leaves the page visibly half-repainted.
+test('no earlier theme survives anywhere in the build', () => {
+  const legacy = [/e2a33f/i, /226,\s*163,\s*63/, /9ece6a/i, /158,\s*206,\s*106/, /#111213/i, /#1a1b1d/i, /Barlow Condensed/];
   const offenders = textFiles().filter((f) => {
     const body = readFileSync(f, 'utf8');
-    return /e2a33f/i.test(body) || /226,\s*163,\s*63/.test(body);
+    return legacy.some((re) => re.test(body));
   });
-  assert.deepEqual(
-    offenders.map((f) => f.replace(distRoot, 'dist')),
-    [],
-    'legacy amber found in built output'
-  );
+  assert.deepEqual(offenders.map((f) => f.replace(distRoot, 'dist')), [], 'amber, green, graphite or Barlow found in the build');
 });
 
-test('the shell becomes a two-track grid on wide viewports', () => {
-  const all = homepageStyles();
-  // Lightning CSS (Astro's build minifier) rewrites `min-width: 1100px` to
-  // `width>=1100px`, so accept either spelling of the same breakpoint.
-  assert.match(all, /min-width:\s*1100px|width\s*>=\s*1100px/, 'expected a 1100px breakpoint');
-  assert.match(all, /grid-template-columns:\s*var\(--console-w\)\s+var\(--rail-w\)/,
-    'expected the console + rail grid');
+test('both faces are self-hosted and reach the build', () => {
+  const css = shippedStyles();
+  assert.match(css, /Big Shoulders Display Variable/, 'expected the display @font-face');
+  assert.match(css, /Instrument Sans Variable/, 'expected the body @font-face');
+  assert.ok(walk(distRoot).some((f) => /big-shoulders-display.*\.woff2$/.test(f)), 'display woff2 missing from dist');
+  assert.ok(walk(distRoot).some((f) => /instrument-sans.*\.woff2$/.test(f)), 'body woff2 missing from dist');
+  assert.doesNotMatch(css, /fonts\.googleapis\.com|fonts\.gstatic\.com/, 'fonts must not load from Google');
 });
 
-test('the Lunthra rail is present and links out cleanly', () => {
+test('the homepage premieres the newest release with a player', () => {
+  const newest = newestFirst()[0];
   const home = readFileSync(dist('index.html'), 'utf8');
-  assert.match(home, /https:\/\/lunthra\.com/, 'expected a lunthra.com link');
-  assert.match(
-    home,
-    /<a class="rail-link"[^>]*rel="noopener"/,
-    'expected rel=noopener on the rail\'s own outbound link'
-  );
-  assert.doesNotMatch(home, /utm_/, 'UTM parameters are not allowed on the Lunthra link');
+  assert.match(home, new RegExp(`api\\.soundcloud\\.com%2Ftracks%2F${newest.soundcloudId}`),
+    'homepage must embed the newest release');
+  assert.match(home, /Now showing/, 'expected the letterbox premiere');
+  assert.match(home, new RegExp(`src="/covers/wide/${newest.slug}\\.jpg"`), 'the premiere uses the letterbox crop');
+  assert.match(home, /"@type":"MusicGroup"/, 'expected MusicGroup JSON-LD');
 });
 
-test('the rail also renders for narrow viewports', () => {
+test('the classical series lists every composer release and the nav can reach it', () => {
   const home = readFileSync(dist('index.html'), 'utf8');
-  // The rail must be in the document at every width, not display:none'd away
-  // on mobile - most music traffic is phones.
-  assert.match(home, /class="rail"/, 'expected the rail markup in the document');
-  // The scoped `.rail` rule ships as `.rail[data-astro-cid-...]{...}` in either
-  // an external dist/_astro/*.css file or, if Astro inlines that sheet, inside
-  // index.html. Search both the way the layout test does so the guard cannot go
-  // inert when the stylesheet crosses Astro's inlining threshold.
-  assert.doesNotMatch(
-    homepageStyles(),
-    /\.rail\b[^{}]*\{[^}]*display:\s*none/,
-    'the rail must reflow on mobile, not disappear'
-  );
+  const composers = ['Bach', 'Beethoven', 'Mozart', 'Tchaikovsky', 'Vivaldi'];
+  const inSeries = releases().filter((r) => composers.some((c) => r.title.startsWith(`${c} `)));
+  assert.ok(inSeries.length >= 2, 'expected at least two composer releases');
+  assert.match(home, /id="series"/, 'the header links to #series');
+  for (const r of inSeries) assert.match(home, new RegExp(`href="/music/${r.slug}/"[^>]*>\\s*<img[^>]*${r.slug}`), `${r.slug} missing from the series`);
+});
+
+// The sibling brand sits on every page; the SoundCloud referral on the home page.
+test('the Lunthra cross-link is on every page and links out cleanly', () => {
+  for (const page of htmlPages()) {
+    const html = readFileSync(page, 'utf8');
+    assert.match(html, /<a[^>]*href="https:\/\/lunthra\.com"[^>]*rel="noopener"/, `${page.replace(distRoot, 'dist')}: Lunthra link`);
+    assert.doesNotMatch(html, /lunthra\.com[^"]*utm_/, 'UTM parameters are not allowed on the Lunthra link');
+  }
+  assert.match(readFileSync(dist('index.html'), 'utf8'), /invite\.soundcloud\.com/, 'the referral sits on the home page');
 });
 
 // --- Catalog integrity (v2, 2026-09-13) -----------------------------------
@@ -122,6 +125,7 @@ test('every release in the collection builds a page with its own player', () => 
       `${r.slug}: release page must embed SoundCloud track ${r.soundcloudId}`
     );
     assert.match(html, /"@type":"MusicRecording"/, `${r.slug}: expected MusicRecording JSON-LD`);
+    assert.match(html, new RegExp(`src="/covers/wide/${r.slug}\\.jpg"`), `${r.slug}: expected its letterbox`);
     assert.ok(existsSync(dist(r.cover.replace(/^\//, ''))), `${r.slug}: cover ${r.cover} missing from dist`);
   }
 });
@@ -141,7 +145,7 @@ test('unknown paths get the site 404, kept out of search and the sitemap', () =>
   const page = readFileSync(dist('404.html'), 'utf8');
   assert.match(page, /<meta name="robots" content="noindex"/);
   assert.doesNotMatch(readFileSync(dist('index.html'), 'utf8'), /noindex/, 'real pages must stay indexable');
-  assert.match(page, /href="\/music\/"/, '404 should link to the track list');
+  assert.match(page, /href="\/music\/"/, '404 should link to the catalogue');
   assert.doesNotMatch(readFileSync(dist('sitemap-0.xml'), 'utf8'), /404/);
 });
 
@@ -150,25 +154,14 @@ test('every release has exactly one SoundCloud id, and ids are unique', () => {
   assert.equal(new Set(ids).size, ids.length, 'duplicate soundcloudId across releases');
 });
 
-test('the homepage features the newest release with a player', () => {
-  const all = releases().sort((a, b) => b.datePublished.localeCompare(a.datePublished) || a.title.localeCompare(b.title));
-  const newest = all[0];
-  const home = readFileSync(dist('index.html'), 'utf8');
-  assert.match(home, new RegExp(`api\\.soundcloud\\.com%2Ftracks%2F${newest.soundcloudId}`),
-    'homepage must embed the newest release');
-  assert.match(home, /LATEST RELEASE/, 'expected the featured rack unit');
-  assert.match(home, /"@type":"MusicGroup"/, 'expected MusicGroup JSON-LD');
+test('the catalogue lists every release and filters by lane', () => {
+  const page = readFileSync(dist('music/index.html'), 'utf8');
+  const tiles = [...page.matchAll(/<li class="poster"[^>]*data-lane="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(tiles.length, releases().length, 'one poster per release');
+  for (const lane of new Set(tiles)) assert.match(page, new RegExp(`data-lane="${lane}" aria-pressed="false"`), `missing ${lane} chip`);
 });
 
-test('the display face is self-hosted and reaches the build', () => {
-  assert.ok(existsSync(dist('fonts/barlow-condensed-800.woff2')), 'display font missing from dist');
-  assert.ok(existsSync(dist('fonts/barlow-condensed-600.woff2')), 'display font missing from dist');
-  const css = homepageStyles();
-  assert.match(css, /Barlow Condensed/, 'expected the @font-face in shipped CSS');
-  assert.doesNotMatch(css, /fonts\.googleapis\.com|fonts\.gstatic\.com/, 'fonts must not load from Google');
-});
-
-test('story page, catalog page, sitemap and robots are generated', () => {
+test('story page, catalogue page, sitemap and robots are generated', () => {
   assert.ok(existsSync(dist('story/index.html')), 'missing /story/');
   assert.ok(existsSync(dist('music/index.html')), 'missing /music/');
   assert.ok(existsSync(dist('sitemap-index.xml')), 'missing sitemap');
@@ -185,7 +178,7 @@ test('no audio file is shipped from this origin', () => {
 // to a reviewer, so the address has to be readable text on every page.
 test('the contact email is visible text on every page and in the JSON-LD', () => {
   const email = 'chrisgwim@chrisgwim.com';
-  const pages = walk(distRoot).filter((f) => f.endsWith('.html'));
+  const pages = htmlPages();
   assert.ok(pages.length > 0, 'expected built pages');
   const hidden = pages.filter((f) => {
     const visible = readFileSync(f, 'utf8')
@@ -200,37 +193,34 @@ test('the contact email is visible text on every page and in the JSON-LD', () =>
   assert.match(home, /"email":"chrisgwim@chrisgwim\.com"/, 'MusicGroup JSON-LD should carry the email');
 });
 
-// Phones narrow the track-list cover column to 40px; with only the 44px
-// width/height attributes every cover rendered squashed by 9%.
-test('track-list covers stay square at any column width', () => {
-  const page = readFileSync(dist('music/index.html'), 'utf8') + homepageStyles();
-  assert.match(page, /\.track-cover[^{]*\{[^}]*aspect-ratio:\s*1[^}]*\}/, 'track-cover needs aspect-ratio: 1');
-  assert.match(page, /\.track-cover[^{]*\{[^}]*width:\s*100%[^}]*\}/, 'track-cover should fill its column');
+// Grid columns narrow on phones; without these the width/height attributes
+// alone squashed the art (2026-10-03, 40x44 covers on every phone).
+test('poster covers stay square at any column width', () => {
+  const css = shippedStyles();
+  assert.match(css, /\.poster-img[^{]*\{[^}]*aspect-ratio:\s*1[^}]*\}/, 'poster-img needs aspect-ratio: 1');
+  assert.match(css, /\.poster-img[^{]*\{[^}]*width:\s*100%[^}]*\}/, 'poster-img should fill its column');
 });
 
-// The transport bar's two readouts plus the session name overflow a 320px phone.
-test('the transport drops the bus readout on the narrowest phones', () => {
-  const page = readFileSync(dist('index.html'), 'utf8') + homepageStyles();
-  assert.match(page, /class="transport-buses[^"]*"/);
-  assert.match(page, /(max-width:\s*380px|width\s*<=\s*380px)\)?\s*\{[^}]*\.transport-buses[^{]*\{\s*display:\s*none/);
-});
-
-// Covers are 500x500 (~65 KB); the lists draw them at 28-44px.
-test('track list and lane cards load small cover thumbnails', async () => {
+// Covers are 500x500 (~65 KB). The wall draws them at ~150px, the prev/next
+// links at 64px, and the letterbox crops them to 2.39:1 at full width.
+test('every cover gets its derived sizes, and the pages use them', async () => {
+  const hd = fileURLToPath(new URL('../public/covers/hd', import.meta.url));
   for (const { slug, cover } of releases()) {
     const file = cover.replace(/^\/covers\//, '');
-    const thumb = dist(`covers/thumbs/${file}`);
-    assert.ok(existsSync(thumb), `missing thumbnail for ${slug}`);
-    const { width, height, size } = await sharp(thumb).metadata().then(async (m) => ({ ...m, size: readFileSync(thumb).length }));
-    assert.equal(width, 132, `${slug} thumb width`);
-    assert.equal(height, 132, `${slug} thumb height`);
-    assert.ok(size < 20_000, `${slug} thumb is ${size} bytes`);
+    for (const [size, px, maxBytes] of [['thumbs', 132, 20_000], ['posters', 360, 60_000]]) {
+      const path = dist(`covers/${size}/${file}`);
+      assert.ok(existsSync(path), `missing ${size} for ${slug}`);
+      const { width, height } = await sharp(path).metadata();
+      assert.deepEqual([width, height], [px, px], `${slug} ${size} size`);
+      assert.ok(readFileSync(path).length < maxBytes, `${slug} ${size} too heavy`);
+    }
+    const wide = dist(`covers/wide/${file}`);
+    assert.ok(existsSync(wide), `missing letterbox crop for ${slug}`);
+    const { width, height } = await sharp(wide).metadata();
+    assert.ok(Math.abs(width / height - 2.39) < 0.01, `${slug} letterbox ratio ${width}x${height}`);
+    if (existsSync(`${hd}/${file}`)) assert.ok(width >= 1000 || width === 500, `${slug} letterbox only ${width}px wide`);
   }
-  const listed = [...readFileSync(dist('music/index.html'), 'utf8').matchAll(/<img class="track-cover" src="([^"]+)"/g)].map((m) => m[1]);
-  assert.equal(listed.length, releases().length, 'one cover per track row');
-  assert.deepEqual(listed.filter((src) => !src.startsWith('/covers/thumbs/')), [], 'track rows must use thumbnails');
-  const laneImgs = [...readFileSync(dist('index.html'), 'utf8').matchAll(/<span class="lane-covers"[^>]*>([\s\S]*?)<\/span>/g)]
-    .flatMap((m) => [...m[1].matchAll(/src="([^"]+)"/g)].map((s) => s[1]));
-  assert.ok(laneImgs.length > 0, 'expected lane-card covers');
-  assert.deepEqual(laneImgs.filter((src) => !src.startsWith('/covers/thumbs/')), [], 'lane cards must use thumbnails');
+  const wall = [...readFileSync(dist('music/index.html'), 'utf8').matchAll(/<img class="poster-img" src="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(wall.length, releases().length, 'one cover per poster');
+  assert.deepEqual(wall.filter((src) => !src.startsWith('/covers/posters/')), [], 'the wall must use the 360px posters');
 });
