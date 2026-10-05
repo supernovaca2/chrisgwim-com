@@ -1,9 +1,10 @@
 ---
 import Base from '../../layouts/Base.astro';
-import TrackList from '../../components/TrackList.astro';
-import { getReleases, LANES, laneSlug, pad2 } from '../../lib/releases';
+import PosterGrid from '../../components/PosterGrid.astro';
+import { getReleases, LANES, laneSlug, pad2, dateLong } from '../../lib/releases';
 
 const releases = await getReleases();
+const first = releases[releases.length - 1];
 const lanes = LANES.map((lane) => ({
   ...lane,
   slug: laneSlug(lane.name),
@@ -11,46 +12,47 @@ const lanes = LANES.map((lane) => ({
 })).filter((lane) => lane.count > 0);
 ---
 <Base
-  title="Track List — Chris Gwim"
-  description={`Every Chris Gwim release: ${releases.length} tracks with cover art, genre, length, and streaming links, filterable by bus.`}
+  title="Catalogue — Chris Gwim"
+  description={`Every Chris Gwim release: ${releases.length} tracks with cover art, genre, length, and streaming links, filterable by lane.`}
   current="music"
 >
-  <div class="catalog">
-    <TrackList releases={releases} headingId="catalog-h" level={1}>
-      <div class="filters" slot="controls" role="group" aria-label="Filter by bus">
-        <button type="button" class="chip" data-lane="" aria-pressed="true">ALL {pad2(releases.length)}</button>
-        {lanes.map((lane) => (
-          <button type="button" class="chip" data-lane={lane.slug} aria-pressed="false" id={lane.slug}>
-            <span class="chip-bus">{lane.bus}</span> {lane.name} <span class="chip-count">{pad2(lane.count)}</span>
-          </button>
-        ))}
-      </div>
-    </TrackList>
-  </div>
+  <section class="wrap section catalogue" aria-labelledby="catalogue-h">
+    <p class="eyebrow">{releases.length} releases since {dateLong(first.data.datePublished)}</p>
+    <div class="section-head">
+      <h1 class="page-title" id="catalogue-h">The catalogue</h1>
+      <p class="section-aside count" aria-live="polite">{pad2(releases.length)} releases</p>
+    </div>
+    <div class="chips" role="group" aria-label="Filter by lane">
+      <button type="button" class="chip" data-lane="" aria-pressed="true">All <span class="chip-count">{pad2(releases.length)}</span></button>
+      {lanes.map((lane) => (
+        <button type="button" class="chip" data-lane={lane.slug} aria-pressed="false" id={lane.slug}>
+          {lane.name} <span class="chip-count">{pad2(lane.count)}</span>
+        </button>
+      ))}
+    </div>
+    <PosterGrid releases={releases} showDate />
+  </section>
 </Base>
 
 <script>
-  // Progressive enhancement: without JS every row shows. With it, the chips
-  // filter rows by lane and the URL hash carries the selection so the home
-  // page's bus cards can deep-link into a filtered list.
+  // Progressive enhancement: without JS every poster shows. With it, the chips
+  // filter by lane and the URL hash carries the selection, so the home page's
+  // lane chips can deep-link into a filtered catalogue (/music/#piano).
   const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.chip'));
-  const rows = Array.from(document.querySelectorAll<HTMLElement>('.track-row-wrap'));
-  const count = document.querySelector<HTMLElement>('.section-count');
-  const total = rows.length;
+  const posters = Array.from(document.querySelectorAll<HTMLElement>('.poster'));
+  const count = document.querySelector<HTMLElement>('.count');
+  const total = posters.length;
+  const pad = (n: number) => String(n).padStart(2, '0');
 
   function apply(lane: string) {
     let shown = 0;
-    for (const row of rows) {
-      const match = !lane || row.dataset.lane === lane;
-      row.hidden = !match;
-      if (match) {
-        shown += 1;
-        const num = row.querySelector<HTMLElement>('.track-num');
-        if (num) num.textContent = String(shown).padStart(2, '0');
-      }
+    for (const poster of posters) {
+      const match = !lane || poster.dataset.lane === lane;
+      poster.hidden = !match;
+      if (match) shown += 1;
     }
     for (const chip of chips) chip.setAttribute('aria-pressed', String((chip.dataset.lane ?? '') === lane));
-    if (count) count.textContent = lane ? `${String(shown).padStart(2, '0')} of ${String(total).padStart(2, '0')} releases` : `${String(total).padStart(2, '0')} releases`;
+    if (count) count.textContent = lane ? `${pad(shown)} of ${pad(total)} releases` : `${pad(total)} releases`;
   }
 
   for (const chip of chips) {
@@ -66,32 +68,13 @@ const lanes = LANES.map((lane) => ({
 </script>
 
 <style>
-  .catalog { padding-top: 40px; }
-  .filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 0 0 14px;
-  }
-  .chip {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.08em;
+  .catalogue { padding-top: 64px; }
+  .page-title {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(56px, 8vw, 120px);
+    line-height: 0.85;
     text-transform: uppercase;
-    color: var(--text-dim);
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    padding: 6px 10px;
-    cursor: pointer;
   }
-  .chip:hover { color: var(--text); border-color: var(--text-dimmer); }
-  .chip[aria-pressed="true"] {
-    color: var(--accent);
-    border-color: var(--accent-dim);
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
-  }
-  .chip-bus { color: var(--text-dimmer); }
-  .chip[aria-pressed="true"] .chip-bus { color: var(--accent-dim); }
-  .chip-count { color: var(--text-dimmer); }
 </style>

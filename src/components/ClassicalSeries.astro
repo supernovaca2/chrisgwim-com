@@ -1,0 +1,100 @@
+---
+import type { Release } from '../lib/releases';
+import { classicalSeries, inWords } from '../lib/releases';
+
+interface Props {
+  releases: Release[];
+}
+const series = classicalSeries(Astro.props.releases);
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
+const n = inWords(series.length);
+---
+{series.length > 1 && (
+  <section class="series" id="series" aria-labelledby="series-h">
+    <div class="wrap">
+      <p class="eyebrow">A series in {n} parts</p>
+      <h2 class="series-title" id="series-h">The classical series</h2>
+      <p class="series-copy">
+        {n[0].toUpperCase() + n.slice(1)} composers, {n} club records. A symphonic motif keeps its shape and gets rebuilt at club tempo.
+      </p>
+      <ol class="series-grid">
+        {series.map(({ release, composer, work }) => (
+          <li>
+            <a href={`${base}music/${release.id}/`}>
+              <img src={base + release.data.cover.replace(/^\//, '')} alt={`${release.data.title} cover art`} width="500" height="500" loading="lazy" />
+              <span class="composer">{composer}</span>
+              <span class="work">{work}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+)}
+
+<style>
+  .series {
+    margin-top: 40px;
+    padding-block: 80px 88px;
+    background: var(--panel);
+    border-block: 1px solid var(--line);
+  }
+  .series-title {
+    margin: 0 0 18px;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(56px, 8vw, 128px);
+    line-height: 0.85;
+    text-transform: uppercase;
+  }
+  .series-copy {
+    margin: 0 0 44px;
+    max-width: 46ch;
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--text-dim);
+  }
+  .series-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    gap: 16px;
+  }
+  .series-grid a {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #000;
+    text-decoration: none;
+  }
+  /* Portrait crop of the square art: the composers sit centre-frame. */
+  .series-grid img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+  }
+  .composer {
+    padding: 16px 16px 4px;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 34px;
+    line-height: 0.9;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .work {
+    padding: 0 16px 18px;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 22px;
+    text-transform: uppercase;
+  }
+  .series-grid a:hover .work,
+  .series-grid a:focus-visible .work { color: var(--accent); }
+</style>

@@ -1,8 +1,10 @@
 ---
-import Transport from '../components/Transport.astro';
-import Rail from '../components/Rail.astro';
-import { PLATFORMS } from '../lib/releases';
+import '@fontsource-variable/big-shoulders-display';
+import '@fontsource-variable/instrument-sans';
 import '../styles/tokens.css';
+import Header from '../components/Header.astro';
+import Studio from '../components/Studio.astro';
+import { getReleases, PLATFORMS } from '../lib/releases';
 
 interface Props {
   title: string;
@@ -11,8 +13,8 @@ interface Props {
   ogImage?: string;
   /** Extra JSON-LD for the page (a MusicRecording on release pages). */
   jsonLd?: Record<string, unknown>;
-  /** Which nav item is current: 'index' | 'music' | 'story'. */
-  current?: 'index' | 'music' | 'story';
+  /** Which nav item is current. */
+  current?: 'home' | 'music' | 'story';
   /** Keep the page out of search results (the 404). */
   noindex?: boolean;
 }
@@ -23,6 +25,7 @@ const base = import.meta.env.BASE_URL.endsWith('/')
 const site = Astro.site ?? new URL('https://chrisgwim.com');
 const canonical = new URL(Astro.url.pathname, site).toString();
 const ogImageAbs = new URL(ogImage, site).toString();
+const releases = await getReleases();
 
 // Shown as visible footer text, not just a mailto href: Spotify for Artists
 // reviewers need to SEE the address next to the artist to verify a request.
@@ -38,12 +41,6 @@ const musicGroup = {
   genre: ['Electronic', 'Techno', 'Classical Fusion', 'House', 'Piano'],
   sameAs: PLATFORMS.map((p) => p.url),
 };
-
-const nav = [
-  { key: 'index', label: 'INDEX', href: base },
-  { key: 'music', label: 'TRACK LIST', href: `${base}music/` },
-  { key: 'story', label: 'STORY', href: `${base}story/` },
-] as const;
 ---
 <!doctype html>
 <html lang="en">
@@ -52,7 +49,7 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#111213" />
+    <meta name="theme-color" content="#08090b" />
     <link rel="canonical" href={canonical} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -66,81 +63,105 @@ const nav = [
     <meta name="twitter:image" content={ogImageAbs} />
     {noindex && <meta name="robots" content="noindex" />}
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
-    <link rel="preload" href={`${base}fonts/barlow-condensed-800.woff2`} as="font" type="font/woff2" crossorigin />
     <link rel="sitemap" href={`${base}sitemap-index.xml`} />
     <script type="application/ld+json" set:html={JSON.stringify(musicGroup)} />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
   </head>
   <body>
-    <Transport />
-    <nav class="site-nav" aria-label="Site">
-      {nav.map((item) => (
-        <a href={item.href} aria-current={current === item.key ? 'page' : undefined}>{item.label}</a>
-      ))}
-    </nav>
-    <div class="shell">
-      <main class="page">
-        <slot />
-      </main>
-      <Rail />
-    </div>
+    <a class="skip" href="#main">Skip to content</a>
+    <Header current={current} />
+    <main id="main">
+      <slot />
+    </main>
+    <Studio referral={current === 'home'} />
     <footer class="footer">
-      <span class="footer-end">END OF SESSION</span>
-      <nav class="footer-nav" aria-label="Footer">
-        {nav.map((item) => <a href={item.href}>{item.label}</a>)}
-        <span class="footer-contact">
-          <span class="footer-label">CONTACT</span>
-          <a class="footer-email" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-        </span>
-      </nav>
-      <span class="footer-copy">© 2026 Chris Gwim</span>
+      <div class="wrap">
+        <p class="billing">
+          {['Gwim Entertainment presents a Chris Gwim production', ...releases.map((r) => r.data.title)].join(' · ')}
+        </p>
+        <ul class="platforms">
+          {PLATFORMS.map((p) => (
+            <li>
+              <a href={p.url} target="_blank" rel="noopener">
+                {p.name}
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"></path></svg>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p class="footer-line">
+          <span>Contact <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></span>
+          <span>© 2026 Chris Gwim</span>
+        </p>
+      </div>
     </footer>
   </body>
 </html>
 
 <style>
-  .site-nav {
-    display: flex;
-    gap: 18px;
-    max-width: var(--shell-w);
-    margin: 0 auto;
-    padding: 10px 20px 0;
-  }
-  .site-nav a {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    color: var(--text-dimmer);
+  .skip {
+    position: absolute;
+    left: 12px;
+    top: -60px;
+    z-index: 10;
+    padding: 12px 16px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 700;
     text-decoration: none;
-    padding-bottom: 2px;
-    border-bottom: 1px solid transparent;
   }
-  .site-nav a[aria-current="page"] {
-    color: var(--text);
-    border-bottom-color: var(--accent);
-  }
-  .site-nav a:hover,
-  .site-nav a:focus-visible { color: var(--accent); }
+  .skip:focus { top: 12px; }
   .footer {
-    max-width: var(--shell-w);
-    margin: 0 auto;
-    padding: 16px 20px 26px;
     border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px 20px;
-    flex-wrap: wrap;
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--text-dimmer);
-    letter-spacing: 0.04em;
+    padding-block: 56px;
+    text-align: center;
   }
-  .footer-nav { display: flex; gap: 14px; flex-wrap: wrap; }
-  .footer-contact { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
-  .footer-label { letter-spacing: 0.1em; }
-  .footer .footer-email { letter-spacing: 0.04em; }
-  .footer a { color: var(--text-dim); text-decoration: none; letter-spacing: 0.1em; }
-  .footer a:hover,
-  .footer a:focus-visible { color: var(--accent); }
+  /* A film poster's billing block: every title, set tall and tight. */
+  .billing {
+    max-width: 1100px;
+    margin: 0 auto 28px;
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(16px, 1.8vw, 24px);
+    line-height: 1.15;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #c9ccd1;
+    text-wrap: balance;
+  }
+  .platforms {
+    list-style: none;
+    margin: 0 0 20px;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 22px;
+  }
+  .platforms a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .platforms svg { color: var(--text-dim); }
+  .platforms a:hover,
+  .platforms a:focus-visible { color: var(--accent); }
+  .footer-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 18px;
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-dim);
+  }
+  .footer-line a { color: var(--text); }
+  .footer-line a:hover,
+  .footer-line a:focus-visible { color: var(--accent); }
 </style>

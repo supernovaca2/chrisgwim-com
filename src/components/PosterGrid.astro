@@ -1,0 +1,92 @@
+---
+import type { Release } from '../lib/releases';
+import { dateShort, fmtDuration, laneSlug } from '../lib/releases';
+import { coverPoster } from '../lib/images';
+
+interface Props {
+  releases: Release[];
+  /** feature: four big posters with display titles. wall: the dense catalogue. */
+  variant?: 'feature' | 'wall';
+  /** Show the release date in each tile's meta line. */
+  showDate?: boolean;
+}
+const { releases, variant = 'wall', showDate = false } = Astro.props;
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
+// Feature tiles draw up to ~330 CSS px, so they take the 500px source art;
+// wall tiles stay under ~180 CSS px and take the 360px poster size.
+const src = (cover: string) => (variant === 'feature' ? base + cover.replace(/^\//, '') : coverPoster(cover, base));
+---
+<ol class:list={['posters', variant]}>
+  {releases.map((release) => (
+    <li class="poster" data-lane={laneSlug(release.data.lane)}>
+      <a href={`${base}music/${release.id}/`}>
+        <img class="poster-img" src={src(release.data.cover)} alt="" width="360" height="360" loading="lazy" />
+        <span class="poster-title">{release.data.title}</span>
+        <span class="poster-meta tabular">
+          {release.data.genre} · {fmtDuration(release.data.durationMs)}{showDate && ` · ${dateShort(release.data.datePublished)}`}
+        </span>
+      </a>
+    </li>
+  ))}
+</ol>
+
+<style>
+  .posters {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+  }
+  .feature {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    gap: 24px;
+  }
+  .wall {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr));
+    gap: 28px 16px;
+  }
+  .poster a {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-decoration: none;
+  }
+  .poster-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: var(--panel);
+    transition: transform 0.25s ease, filter 0.25s ease;
+  }
+  .poster a:hover .poster-img,
+  .poster a:focus-visible .poster-img { transform: translateY(-4px); filter: brightness(1.08); }
+  .poster-title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .feature .poster a { gap: 12px; }
+  .feature .poster-title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 28px;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+  .poster a:hover .poster-title,
+  .poster a:focus-visible .poster-title { color: var(--accent); }
+  .poster-meta {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .feature .poster-meta { font-size: 13px; }
+  @media (prefers-reduced-motion: reduce) {
+    .poster-img { transition: none; }
+    .poster a:hover .poster-img,
+    .poster a:focus-visible .poster-img { transform: none; }
+  }
+</style>

@@ -25,6 +25,10 @@ jobs:
           node-version: 24
           cache: npm
 
+      # The sync normalises hi-res cover art with sharp, so install first.
+      - name: Install
+        run: npm ci
+
       - name: Pull the live track list
         id: sync
         run: |
@@ -37,9 +41,7 @@ jobs:
       # anything reaches main, and the live site keeps its last good build.
       - name: Build and test
         if: steps.sync.outputs.changed == 'true'
-        run: |
-          npm ci
-          npm test
+        run: npm test
 
       - name: Commit and deploy
         if: steps.sync.outputs.changed == 'true'

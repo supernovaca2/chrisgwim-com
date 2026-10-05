@@ -1,177 +1,105 @@
 ---
 import Base from '../layouts/Base.astro';
-import Featured from '../components/Featured.astro';
-import Lanes from '../components/Lanes.astro';
-import TrackList from '../components/TrackList.astro';
-import Outputs from '../components/Outputs.astro';
-import Promo from '../components/Promo.astro';
-import { getReleases, LANES, pad2 } from '../lib/releases';
+import Letterbox from '../components/Letterbox.astro';
+import PosterGrid from '../components/PosterGrid.astro';
+import ClassicalSeries from '../components/ClassicalSeries.astro';
+import { getReleases, LANES, laneSlug, pad2, dateLong } from '../lib/releases';
 
 const releases = await getReleases();
 const latest = releases[0];
-const lanesInUse = LANES.filter((l) => releases.some((r) => r.data.lane === l.name));
-const firstYear = releases[releases.length - 1].data.datePublished.slice(0, 4);
+const first = releases[releases.length - 1];
+const lanes = LANES.map((lane) => ({
+  ...lane,
+  slug: laneSlug(lane.name),
+  count: releases.filter((r) => r.data.lane === lane.name).length,
+})).filter((lane) => lane.count > 0);
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
 ---
 <Base
   title="Chris Gwim — Producer"
-  description={`Chris Gwim: ${releases.length} releases on ${lanesInUse.length} buses, from classical fusion and melodic techno to piano and synth punk. Latest: ${latest.data.title}.`}
-  current="index"
+  description={`Chris Gwim: ${releases.length} releases across ${lanes.length} lanes, from classical fusion and melodic techno to piano and synth punk. Now showing: ${latest.data.title}.`}
+  current="home"
 >
-  <section class="hero">
-    <div class="dial" aria-hidden="true"><div class="dial-ticks"></div></div>
-    <div class="hero-grid">
-      <div class="operator-frame">
-        <div class="operator-label">
-          <span>OPERATOR</span>
-          <span class="rec">● LIVE</span>
-        </div>
-        <img src={`${base}artist-portrait.jpg`} alt="Chris Gwim" width="480" height="640" />
-      </div>
-      <div class="hero-content">
-        <p class="kicker">Producer · Classical Fusion / Techno / Electronic</p>
-        <h1 class="wordmark">Chris <em>Gwim</em></h1>
-        <p class="tagline">
-          {pad2(releases.length)} releases on {pad2(lanesInUse.length)} buses, from classical fusion to synth punk. Ableton Live is the instrument. Press play.
+  <Letterbox release={latest} eyebrow={`Now showing · released ${dateLong(latest.data.datePublished)}`} linkTitle />
+
+  <section class="wrap section" aria-labelledby="showing-h">
+    <div class="section-head">
+      <h2 class="section-title" id="showing-h">Also showing</h2>
+      <p class="section-aside">The latest releases · <a href={`${base}music/`}>all {releases.length}</a></p>
+    </div>
+    <PosterGrid releases={releases.slice(1, 5)} variant="feature" />
+  </section>
+
+  <ClassicalSeries releases={releases} />
+
+  <section class="wrap section" aria-labelledby="catalogue-h">
+    <div class="section-head">
+      <h2 class="section-title" id="catalogue-h">The full catalogue</h2>
+      <p class="section-aside">{releases.length} releases since {dateLong(first.data.datePublished)}</p>
+    </div>
+    <nav class="chips" aria-label="Browse by lane">
+      <a class="chip" href={`${base}music/`}>All <span class="chip-count">{pad2(releases.length)}</span></a>
+      {lanes.map((lane) => (
+        <a class="chip" href={`${base}music/#${lane.slug}`}>{lane.name} <span class="chip-count">{pad2(lane.count)}</span></a>
+      ))}
+    </nav>
+    <PosterGrid releases={releases} />
+  </section>
+
+  <section class="credits" aria-labelledby="credits-h">
+    <div class="wrap credits-grid">
+      <img src={`${base}artist-portrait.jpg`} alt="Chris Gwim" width="480" height="640" loading="lazy" />
+      <div>
+        <p class="eyebrow">Written and produced by</p>
+        <h2 class="credits-name" id="credits-h">Chris<br />Gwim</h2>
+        <p class="credits-copy">
+          A producer working in Ableton Live. The output is whatever the idea needs: melodic techno
+          and trance, progressive house, solo piano, synth punk, drum and bass, soca, afrobeats.
         </p>
-        <div class="spec-row">
-          <span class="spec">STATUS <b>LIVE</b></span>
-          <span class="spec">RELEASES <b>{pad2(releases.length)}</b></span>
-          <span class="spec">BUSES <b>{pad2(lanesInUse.length)}</b></span>
-          <span class="spec">SINCE <b>{firstYear}</b></span>
-          <span class="spec">LATEST <b>{latest.data.title.toUpperCase()}</b></span>
-        </div>
+        <p class="credits-copy">No live dates. The work is the catalog. Press play.</p>
+        <a class="btn" href={`${base}story/`}>The story →</a>
       </div>
     </div>
   </section>
-
-  <Featured release={latest} />
-  <Lanes />
-  <TrackList releases={releases.slice(0, 10)} total={releases.length} />
-  <div class="rack"><Outputs /></div>
-  <div class="rack"><Promo /></div>
 </Base>
 
 <style>
-  .hero {
-    position: relative;
-    padding: 52px 12px 40px;
-    overflow: hidden;
+  .credits {
+    margin-top: 48px;
+    border-top: 1px solid var(--line);
+    padding-block: 80px;
   }
-  .dial {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 640px;
-    height: 640px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    border: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
-    opacity: 0.6;
-    pointer-events: none;
-  }
-  .dial::before {
-    content: "";
-    position: absolute;
-    inset: 70px;
-    border-radius: 50%;
-    border: 1px solid color-mix(in srgb, var(--accent) 7%, transparent);
-  }
-  .dial::after {
-    content: "";
-    position: absolute;
-    inset: 140px;
-    border-radius: 50%;
-    border: 1px solid color-mix(in srgb, var(--accent) 6%, transparent);
-  }
-  .dial-ticks {
-    position: absolute;
-    inset: 0;
-    background: repeating-conic-gradient(color-mix(in srgb, var(--accent) 10%, transparent) 0deg 1deg, transparent 1deg 15deg);
-    -webkit-mask: radial-gradient(circle, transparent 60%, black 61%, black 63%, transparent 64%);
-    mask: radial-gradient(circle, transparent 60%, black 61%, black 63%, transparent 64%);
-    border-radius: 50%;
-  }
-  .hero-grid {
-    position: relative;
-    z-index: 1;
+  .credits-grid {
     display: grid;
-    grid-template-columns: 184px 1fr;
-    gap: 28px;
-    align-items: start;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 48px;
+    align-items: center;
   }
-  @media (max-width: 560px) {
-    .hero-grid { grid-template-columns: 1fr; }
-    .operator-frame { max-width: 220px; }
-  }
-  .operator-frame {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .operator-label {
-    display: flex;
-    justify-content: space-between;
-    padding: 7px 9px;
-    border-bottom: 1px solid var(--line);
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-dimmer);
-  }
-  .operator-label .rec { color: var(--red); }
-  .operator-frame img {
+  .credits-grid img {
     display: block;
     width: 100%;
+    max-width: 520px;
     height: auto;
-    filter: grayscale(1) contrast(1.08);
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    filter: grayscale(1) contrast(1.1);
   }
-  .hero-content { position: relative; min-width: 0; }
-  .kicker {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin: 0 0 14px;
-  }
-  .wordmark {
+  .credits-name {
+    margin: 0 0 24px;
     font-family: var(--display);
-    font-weight: 800;
-    font-size: clamp(56px, 12vw, 112px);
-    letter-spacing: 0.005em;
+    font-weight: 900;
+    font-size: clamp(64px, 9vw, 140px);
+    line-height: 0.84;
     text-transform: uppercase;
-    margin: 0;
-    line-height: 0.88;
-    text-wrap: balance;
   }
-  .wordmark em { font-style: normal; color: var(--text-dimmer); }
-  .tagline {
-    font-size: 15px;
-    line-height: 1.55;
-    color: var(--text-dim);
-    margin: 18px 0 0;
-    max-width: 46ch;
+  .credits-copy {
+    margin: 0 0 16px;
+    max-width: 50ch;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text-soft);
   }
-  .spec-row {
-    display: flex;
-    justify-content: flex-start;
-    gap: 8px;
-    margin-top: 20px;
-    flex-wrap: wrap;
-  }
-  .spec {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    padding: 4px 9px;
-    background: var(--panel);
-  }
-  .spec b { color: var(--text); font-weight: 400; }
+  .credits-copy:last-of-type { margin-bottom: 28px; }
 </style>

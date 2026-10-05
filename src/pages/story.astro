@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { getReleases, LANES, laneSlug, pad2 } from '../lib/releases';
+import { getReleases, LANES, laneSlug, pad2, classicalSeries, dateLong } from '../lib/releases';
 
 const releases = await getReleases();
 const first = releases[releases.length - 1];
@@ -10,6 +10,11 @@ const lanes = LANES.map((lane) => ({
   slug: laneSlug(lane.name),
   tracks: releases.filter((r) => r.data.lane === lane.name),
 })).filter((lane) => lane.tracks.length > 0);
+// Oldest first reads like a career, and keeps the copy true as the series grows.
+const seriesTitles = classicalSeries(releases).reverse().map((s) => s.release.data.title);
+const seriesList = seriesTitles.length > 1
+  ? `${seriesTitles.slice(0, -1).join(', ')} and ${seriesTitles.at(-1)}`
+  : seriesTitles[0];
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
@@ -21,178 +26,168 @@ const monthYear = (iso: string) =>
   description="Who Chris Gwim is: a producer working in Ableton Live across classical fusion, techno, house, piano, punk and world music."
   current="story"
 >
-  <div class="story">
-    <section class="unit story-unit">
-      <div class="unit-label">
-        <span>OPERATOR — STORY</span>
-        <span class="live">● LIVE</span>
-      </div>
-      <div class="story-body">
-        <div class="story-portrait">
-          <img src={`${base}artist-portrait.jpg`} alt="Chris Gwim" width="480" height="640" />
-        </div>
-        <div class="story-copy">
-          <h1 class="story-title">Chris <em>Gwim</em></h1>
-          <p>
-            Chris Gwim is a producer. The instrument is Ableton Live; the output is whatever
-            the idea needs. {pad2(releases.length)} releases since {monthYear(first.data.datePublished)}:
-            melodic techno and trance, progressive house, solo piano, synth punk, drum and bass,
-            soca, afrobeats.
-          </p>
-          <p>
-            The current lane is classical fusion. <em>Beethoven Proteus</em> and <em>Mozart AETHER</em>{' '}
-            take a symphonic motif, keep its shape, and rebuild it at club tempo. More composers are
-            in the queue.
-          </p>
-          <p>
-            No live dates. The work is the catalog. Press play.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" aria-labelledby="chain-h">
-      <div class="section-head">
-        <h2 class="section-title" id="chain-h">Signal chain</h2>
-        <span class="section-count">as of {latest.data.datePublished}</span>
-      </div>
-      <dl class="chain">
-        <div><dt>DAW</dt><dd>Ableton Live</dd></div>
-        <div><dt>Releases</dt><dd>{pad2(releases.length)}</dd></div>
-        <div><dt>Buses</dt><dd>{pad2(lanes.length)}</dd></div>
-        <div><dt>First release</dt><dd>{first.data.datePublished}</dd></div>
-        <div><dt>Latest</dt><dd>{latest.data.datePublished}</dd></div>
-      </dl>
-    </section>
-
-    <section class="section" aria-labelledby="routing-h">
-      <div class="section-head">
-        <h2 class="section-title" id="routing-h">Routing</h2>
-        <span class="section-count">every track on one bus</span>
-      </div>
-      <ol class="routing">
-        {lanes.map((lane) => (
-          <li>
-            <a class="route" href={`${base}music/#${lane.slug}`}>
-              <span class="route-bus mono">BUS {lane.bus}</span>
-              <span class="route-name">{lane.name}</span>
-              <span class="route-tracks mono">
-                {lane.tracks.map((r) => r.data.title).join(' · ')}
-              </span>
-            </a>
-          </li>
-        ))}
-      </ol>
-    </section>
-
-    <section class="section" aria-labelledby="press-h">
-      <div class="section-head">
-        <h2 class="section-title" id="press-h">Press &amp; licensing</h2>
-        <span class="section-count">assets</span>
-      </div>
-      <p class="press-copy">
-        Cover art on every release page is served at 500 px. For hi-res art, a bio, or a
-        sync inquiry, use the contact link in the footer.
+  <section class="wrap story" aria-labelledby="story-h">
+    <img class="portrait" src={`${base}artist-portrait.jpg`} alt="Chris Gwim" width="480" height="640" />
+    <div class="story-copy">
+      <p class="eyebrow">Written and produced by</p>
+      <h1 class="story-title" id="story-h">Chris<br />Gwim</h1>
+      <p>
+        Chris Gwim is a producer. The instrument is Ableton Live; the output is whatever
+        the idea needs. {pad2(releases.length)} releases since {monthYear(first.data.datePublished)}:
+        melodic techno and trance, progressive house, solo piano, synth punk, drum and bass,
+        soca, afrobeats.
       </p>
-    </section>
-  </div>
+      {seriesList && (
+        <p>
+          The current lane is classical fusion. {seriesList} take a symphonic motif, keep its
+          shape, and rebuild it at club tempo. More composers are in the queue.
+        </p>
+      )}
+      <p>No live dates. The work is the catalog. Press play.</p>
+    </div>
+  </section>
+
+  <section class="wrap section" aria-labelledby="facts-h">
+    <div class="section-head">
+      <h2 class="section-title" id="facts-h">The facts</h2>
+      <p class="section-aside">As of {dateLong(latest.data.datePublished)}</p>
+    </div>
+    <dl class="facts">
+      <div><dt>Instrument</dt><dd>Ableton Live</dd></div>
+      <div><dt>Releases</dt><dd class="tabular">{pad2(releases.length)}</dd></div>
+      <div><dt>Lanes</dt><dd class="tabular">{pad2(lanes.length)}</dd></div>
+      <div><dt>First release</dt><dd>{dateLong(first.data.datePublished)}</dd></div>
+      <div><dt>Latest</dt><dd>{dateLong(latest.data.datePublished)}</dd></div>
+      <div><dt>Label</dt><dd><a href="https://gwimentertainment.com" target="_blank" rel="noopener">Gwim Entertainment</a></dd></div>
+    </dl>
+  </section>
+
+  <section class="wrap section" aria-labelledby="lanes-h">
+    <div class="section-head">
+      <h2 class="section-title" id="lanes-h">The lanes</h2>
+      <p class="section-aside">Every track sits in one</p>
+    </div>
+    <ol class="lanes">
+      {lanes.map((lane) => (
+        <li>
+          <a href={`${base}music/#${lane.slug}`}>
+            <span class="lane-name">{lane.name}</span>
+            <span class="lane-count tabular">{pad2(lane.tracks.length)}</span>
+            <span class="lane-tracks">{lane.tracks.map((r) => r.data.title).join(' · ')}</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="wrap section press" aria-labelledby="press-h">
+    <div class="section-head">
+      <h2 class="section-title" id="press-h">Press &amp; licensing</h2>
+    </div>
+    <p>
+      Cover art on every release page is served at 500 px. For hi-res art, a bio, or a
+      sync inquiry, use the contact address in the footer.
+    </p>
+  </section>
 </Base>
 
 <style>
-  .story { padding-top: 40px; }
-  .story-unit { margin: 0 0 32px; }
-  .story-body {
+  .story {
     display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 24px;
-    padding: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 48px;
+    align-items: center;
+    padding-block: 64px 24px;
   }
-  @media (max-width: 620px) {
-    .story-body { grid-template-columns: 1fr; }
-    .story-portrait { max-width: 220px; }
-  }
-  .story-portrait img {
+  .portrait {
     display: block;
     width: 100%;
+    max-width: 520px;
     height: auto;
-    border: 1px solid var(--line-faint);
-    border-radius: 3px;
-    filter: grayscale(1) contrast(1.08);
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    filter: grayscale(1) contrast(1.1);
   }
-  .story-copy { min-width: 0; }
   .story-title {
+    margin: 0 0 28px;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(72px, 10vw, 160px);
+    line-height: 0.84;
+    text-transform: uppercase;
+  }
+  .story-copy p:not(.eyebrow),
+  .press p {
+    margin: 0 0 16px;
+    max-width: 56ch;
+    font-size: 18px;
+    line-height: 1.65;
+    color: var(--text-soft);
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    gap: 16px;
+    margin: 0;
+  }
+  .facts div {
+    padding: 20px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
+  .facts dt {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .facts dd {
+    margin: 0;
     font-family: var(--display);
     font-weight: 800;
-    font-size: clamp(40px, 8vw, 64px);
-    line-height: 0.9;
+    font-size: 30px;
+    line-height: 1;
     text-transform: uppercase;
-    letter-spacing: 0.005em;
-    margin: 0 0 18px;
   }
-  .story-title em { font-style: normal; color: var(--text-dimmer); }
-  .story-copy p {
-    font-size: 16px;
-    line-height: 1.6;
-    color: var(--text-dim);
-    margin: 0 0 14px;
-    max-width: 60ch;
-  }
-  .story-copy p em { font-style: normal; color: var(--text); }
-  .chain {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 8px;
-    margin: 0;
-    font-family: var(--mono);
-    font-size: 12px;
-  }
-  .chain div {
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    padding: 8px 10px;
-    background: var(--panel);
-  }
-  .chain dt {
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-dimmer);
-    margin: 0 0 4px;
-  }
-  .chain dd { margin: 0; color: var(--text); }
-  .routing {
+  .facts a { text-decoration: none; }
+  .facts a:hover,
+  .facts a:focus-visible { color: var(--accent); }
+  .lanes {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
+    border-top: 1px solid var(--line-strong);
   }
-  .route {
+  .lanes a {
     display: grid;
-    grid-template-columns: 56px 1fr;
-    gap: 2px 14px;
-    padding: 10px 8px;
-    border-bottom: 1px solid var(--line-faint);
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 24px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--line);
     text-decoration: none;
-    color: inherit;
   }
-  .routing li:last-child .route { border-bottom: none; }
-  .route-bus { font-size: 10px; color: var(--text-dimmer); grid-row: 1 / span 2; padding-top: 3px; }
-  .route-name {
+  .lane-name {
     font-family: var(--display);
-    font-weight: 600;
-    font-size: 18px;
-    line-height: 1.05;
+    font-weight: 800;
+    font-size: clamp(28px, 3vw, 40px);
+    line-height: 1;
     text-transform: uppercase;
   }
-  .route:hover .route-name,
-  .route:focus-visible .route-name { color: var(--accent); }
-  .route-tracks { font-size: 10px; color: var(--text-dimmer); line-height: 1.6; }
-  .press-copy {
-    font-size: 15px;
+  .lane-count {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(28px, 3vw, 40px);
+    line-height: 1;
+    color: var(--accent);
+  }
+  .lane-tracks {
+    grid-column: 1 / -1;
+    font-size: 14px;
     line-height: 1.6;
     color: var(--text-dim);
-    margin: 0;
-    max-width: 60ch;
   }
+  .lanes a:hover .lane-name,
+  .lanes a:focus-visible .lane-name { color: var(--accent); }
 </style>

@@ -1,0 +1,64 @@
+---
+// Two evergreen cross-links before the footer. Lunthra (the sibling brand) on
+// every page; the SoundCloud Artist Pro referral on the home page only.
+// Deliberately no product feed, so neither goes stale.
+interface Props {
+  referral?: boolean;
+}
+const { referral = false } = Astro.props;
+const LUNTHRA_URL = 'https://lunthra.com';
+const REFERRAL_URL = 'https://invite.soundcloud.com/magnusnova!8bf953f927!a';
+---
+<aside class="studio" aria-label="Also from the studio">
+  <div class="wrap studio-grid">
+    <div class="studio-card">
+      <p class="eyebrow">Also from the studio</p>
+      <p class="studio-mark">Lunthra</p>
+      <p class="studio-copy">Science and sci-fi apparel, printed to order.</p>
+      <a class="btn studio-link" href={LUNTHRA_URL} target="_blank" rel="noopener">Visit the store ↗</a>
+    </div>
+    {referral && (
+      <div class="studio-card">
+        <p class="eyebrow">Support the music</p>
+        <p class="studio-mark">Artist Pro</p>
+        <p class="studio-copy">Get a free month of SoundCloud Artist Pro on me.</p>
+        <a class="btn" href={REFERRAL_URL} target="_blank" rel="noopener">Claim your free month ↗</a>
+      </div>
+    )}
+  </div>
+</aside>
+
+<style>
+  .studio {
+    border-top: 1px solid var(--line);
+    padding-block: 56px;
+  }
+  .studio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 16px;
+  }
+  .studio-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 28px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
+  .studio-mark {
+    margin: 0 0 8px;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .studio-copy {
+    margin: 0 0 22px;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-dim);
+  }
+</style>
