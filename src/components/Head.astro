@@ -1,0 +1,66 @@
+---
+// What every page puts in <head>: title, description, canonical URL, social
+// cards and structured data. The home page (Overworld) is its own document and
+// does not use the Base layout, so this lives apart from it.
+import { PLATFORMS } from '../lib/releases';
+import { CONTACT_EMAIL, safeJson } from '../lib/site';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Absolute or site-relative path to the share image. Defaults to the portrait. */
+  ogImage?: string;
+  /** Extra JSON-LD for the page (a MusicRecording on release pages). */
+  jsonLd?: Record<string, unknown>;
+  /** Keep the page out of search results (the 404). */
+  noindex?: boolean;
+  viewport?: string;
+}
+const {
+  title,
+  description,
+  ogImage = '/artist-portrait.jpg',
+  jsonLd,
+  noindex = false,
+  viewport = 'width=device-width, initial-scale=1',
+} = Astro.props;
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
+const site = Astro.site ?? new URL('https://chrisgwim.com');
+const canonical = new URL(Astro.url.pathname, site).toString();
+const ogImageAbs = new URL(ogImage, site).toString();
+
+const musicGroup = {
+  '@context': 'https://schema.org',
+  '@type': 'MusicGroup',
+  name: 'Chris Gwim',
+  url: site.toString(),
+  email: CONTACT_EMAIL,
+  image: ogImageAbs,
+  genre: ['Electronic', 'Techno', 'Classical Fusion', 'House', 'Piano'],
+  sameAs: PLATFORMS.map((p) => p.url),
+};
+---
+<meta charset="utf-8" />
+<meta name="viewport" content={viewport} />
+<title>{title}</title>
+<meta name="description" content={description} />
+<meta name="theme-color" content="#08090b" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+<link rel="canonical" href={canonical} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Chris Gwim" />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogImageAbs} />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImageAbs} />
+{noindex && <meta name="robots" content="noindex" />}
+<link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+<link rel="sitemap" href={`${base}sitemap-index.xml`} />
+<script type="application/ld+json" set:html={safeJson(musicGroup)} />
+{jsonLd && <script type="application/ld+json" set:html={safeJson(jsonLd)} />}

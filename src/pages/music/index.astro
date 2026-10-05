@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import PosterGrid from '../../components/PosterGrid.astro';
+import ClassicalSeries from '../../components/ClassicalSeries.astro';
 import { getReleases, LANES, laneSlug, pad2, dateLong } from '../../lib/releases';
 
 const releases = await getReleases();
@@ -12,14 +13,14 @@ const lanes = LANES.map((lane) => ({
 })).filter((lane) => lane.count > 0);
 ---
 <Base
-  title="Catalogue — Chris Gwim"
+  title="Catalog — Chris Gwim"
   description={`Every Chris Gwim release: ${releases.length} tracks with cover art, genre, length, and streaming links, filterable by lane.`}
   current="music"
 >
-  <section class="wrap section catalogue" aria-labelledby="catalogue-h">
+  <section class="wrap section catalog" aria-labelledby="catalog-h">
     <p class="eyebrow">{releases.length} releases since {dateLong(first.data.datePublished)}</p>
     <div class="section-head">
-      <h1 class="page-title" id="catalogue-h">The catalogue</h1>
+      <h1 class="page-title" id="catalog-h">The catalog</h1>
       <p class="section-aside count" aria-live="polite">{pad2(releases.length)} releases</p>
     </div>
     <div class="chips" role="group" aria-label="Filter by lane">
@@ -32,12 +33,15 @@ const lanes = LANES.map((lane) => ({
     </div>
     <PosterGrid releases={releases} showDate />
   </section>
+
+  <ClassicalSeries releases={releases} />
 </Base>
 
 <script>
   // Progressive enhancement: without JS every poster shows. With it, the chips
-  // filter by lane and the URL hash carries the selection, so the home page's
-  // lane chips can deep-link into a filtered catalogue (/music/#piano).
+  // filter by lane and the URL hash carries the selection, so a link can open a
+  // filtered catalog (/music/#piano). /music/#series is not a lane: it scrolls
+  // to the classical series below the wall.
   const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.chip'));
   const posters = Array.from(document.querySelectorAll<HTMLElement>('.poster'));
   const count = document.querySelector<HTMLElement>('.count');
@@ -68,7 +72,7 @@ const lanes = LANES.map((lane) => ({
 </script>
 
 <style>
-  .catalogue { padding-top: 64px; }
+  .catalog { padding-top: 64px; }
   .page-title {
     margin: 0;
     font-family: var(--display);

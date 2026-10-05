@@ -44,10 +44,13 @@ const onSoundCloud = primaryUrl.includes('soundcloud.com');
       </div>
     </div>
     <div class="player">
+      {/* Sandboxed: the player may run its scripts and open soundcloud.com in a new tab. It may not navigate this page. */}
       <iframe
         loading="lazy"
         scrolling="no"
         allow="autoplay"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        referrerpolicy="strict-origin-when-cross-origin"
         title={`${title} by Chris Gwim on SoundCloud`}
         src={playerSrc(soundcloudId)}></iframe>
     </div>
