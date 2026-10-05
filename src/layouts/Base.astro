@@ -123,7 +123,8 @@ const releases = await getReleases();
     font-size: 14px;
     color: var(--text-dim);
   }
-  .footer-line a { color: var(--text); }
+  /* Padded so the address is an easy target on a phone. */
+  .footer-line a { display: inline-block; padding-block: 8px; color: var(--text); }
   .footer-line a:hover,
   .footer-line a:focus-visible { color: var(--accent); }
 </style>

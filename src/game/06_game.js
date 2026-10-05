@@ -84,6 +84,7 @@ function findGoal() {
   else el.innerHTML = '<small>Done</small><b>Every beacon is lit</b>';
 }
 
+const FINALE = 16, FINALE_CARD_AT = 12.5;      // seconds: the whole ending, and when its closing card opens
 function discover(slug, quiet = false) {
   if (save.found.has(slug) || !bySlug.has(slug)) return;
   save.found.add(slug); persist();
@@ -104,10 +105,11 @@ function discover(slug, quiet = false) {
   banner(`Beacon lit · ${save.found.size} / ${TOTAL}`, r.title, r.genre === lane.name ? lane.name : `${lane.name} · ${r.genre}`, lane.color, 3);
   if (n === all) { banner('District complete', lane.name, `All ${all} beacon${all === 1 ? '' : 's'} lit`, lane.color, 3.4); setTimeout(() => sfx.lane(li), 2900); }
   if (save.found.size === TOTAL) {
-    game.finale = 16;
+    // Sixteen seconds of fireworks, counted down in updateWorld. The closing card opens from
+    // there too, not from a timer, so starting a new game calls the whole ending off.
+    game.finale = FINALE; game.finaleCard = true;
     banner('Overworld complete', `All ${TOTAL} beacons lit`, 'Dawn breaks over the catalog.', '#ffd9a8', 5);
-    setTimeout(() => sfx.all(), 6200);
-    setTimeout(() => { if (!game.overlay && game.mode === 'play') openItem(interactables.find((it) => it.kind === 'links')); }, 12500);
+    setTimeout(() => { if (game.finale > 0) sfx.all(); }, 6200);
   }
 }
 
@@ -115,12 +117,12 @@ function resetProgress() {
   save.found.clear(); persist();
   for (const m of monoliths) { m.found = false; m.k = 0; }
   for (const d of districts) d.done = false;
-  game.finale = 0;
+  game.finale = 0; game.finaleCard = false;
   refreshQuest(false); refreshTrackList(); setMoodTargets(); findGoal();
 }
 
 // ---------- The world, per frame ----------
-let lodClock = 0, currentDistrict = null, edgeNotice = 0;
+let lodClock = 0, currentDistrict = null, edgeNotice = 0, scrim = -1;
 // Original uploads are up to 1200px. Thirty of them would hold a quarter gigabyte of video
 // memory, so only the nearest few are kept; the 360px cards stay loaded for everything else.
 const SHARP_MAX = 8, sharp = [];
@@ -129,6 +131,15 @@ function updateWorld(dt) {
   const t = game.time, p = player.pos;
   mood.night = damp(mood.night, moodNight, 0.5, dt); mood.dawn = damp(mood.dawn, moodDawn, 0.22, dt);
   applyMood();
+  // The HUD's backing deepens as the sky lightens (.hud::before in overworld.css).
+  // Night counts too, at half weight: a dark sky, but crossed by every lit beam.
+  const glare = Math.max(mood.dawn, mood.night * 0.5);
+  const wanted = Math.round((0.45 + 0.4 * glare) * 50) / 50;
+  if (wanted !== scrim) {
+    scrim = wanted;
+    hud.style.setProperty('--scrim', String(scrim));
+    titleEl.style.setProperty('--veil', glare.toFixed(2));      // .title::before
+  }
   starU.uTime.value = t;
 
   nearLit.length = 0;
@@ -145,6 +156,16 @@ function updateWorld(dt) {
     m.core.scale.set(girth, BEAM_H * (0.5 + 0.5 * e), girth);
     m.halo.material.uniforms.uOpacity.value = e * 0.42 * shimmer + flash * 0.5;
     m.pool.material.opacity = e * 0.4 + flash * 0.4;
+    // Draw calls are what a phone's CPU pays for. Nothing invisible is submitted: not the glow of
+    // a beacon that is still dark, and not the face of the slab that is turned away.
+    m.core.visible = m.core.material.uniforms.uOpacity.value > 0.004;
+    m.halo.visible = m.pool.visible = e > 0.004;
+    const frontShown = (cam.pos.x - m.x) * m.nx + (cam.pos.z - m.z) * m.nz > 0;
+    if (frontShown !== m.frontShown) {
+      m.frontShown = frontShown;
+      for (const o of m.front) o.visible = frontShown;
+      for (const o of m.back) o.visible = !frontShown;
+    }
     if (m.found) { const dx = m.x - p.x, dz = m.z - p.z; m.d2 = dx * dx + dz * dz; if (m.d2 < 110 * 110) nearLit.push(m); }
   }
   nearLit.sort((a, b) => a.d2 - b.d2);
@@ -208,6 +229,11 @@ function updateWorld(dt) {
 
   if (game.finale > 0) {
     game.finale -= dt;
+    // The closing card waits for a clear moment: not over a menu, not mid-travel.
+    if (game.finaleCard && game.finale < FINALE - FINALE_CARD_AT && game.mode === 'play' && !game.overlay && !game.traveling) {
+      game.finaleCard = false;
+      openItem(interactables.find((it) => it.kind === 'links'));
+    }
     if (Math.random() < dt * 3.2) {
       const lane = lanes[Math.floor(Math.random() * lanes.length)], a = Math.random() * TAU, rr = 10 + Math.random() * 46;
       burst(p.x + Math.sin(a) * rr, player.pos.y + 16 + Math.random() * 22, p.z + Math.cos(a) * rr, lane.color, small ? 40 : 80, 15, 2);
@@ -241,9 +267,13 @@ function setOverlay(name) {
   for (const k in sheets) { const on = k === name; sheets[k].classList.toggle('on', on); sheets[k].toggleAttribute('inert', !on); }
   const pOn = name === 'panel';
   panel.classList.toggle('on', pOn); panel.toggleAttribute('inert', !pOn);
+  // What an overlay covers or fades out must leave the Tab order too, not only the screen.
+  hud.toggleAttribute('inert', !!name);
+  dock.toggleAttribute('inert', !!name && !pOn);
+  if (game.mode === 'title') titleEl.toggleAttribute('inert', !!name);
   document.body.classList.toggle('paused', !!name);
-  document.body.classList.toggle('cine', pOn && !small);
-  keys.clear();
+  document.body.classList.toggle('cine', pOn && !sheetLayout());
+  releaseAll();
   if (!name) {
     if (cam.mode === 'inspect') { cam.mode = 'chase'; cam.ease = 0.3; }
     if (panelItem) { panelItem = null; setHash(''); }
@@ -656,32 +686,42 @@ addEventListener('keydown', (e) => {
   }
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('blur', () => keys.clear());
-document.addEventListener('visibilitychange', () => keys.clear());
 
 // Touch: a stick for the left thumb, two holds for the right.
 const stick = { id: -1, x: 0, y: 0 };
 const pads = { boost: false, drift: false };
-{
-  const el = $('stick'), nub = $('stick-nub');
-  const move = (e) => {
-    const r = el.getBoundingClientRect();
-    let dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2), dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-    const len = Math.hypot(dx, dy);
-    if (len > 1) { dx /= len; dy /= len; }
-    stick.x = dx; stick.y = dy;
-    nub.style.transform = `translate(${(dx * 38).toFixed(1)}px, ${(dy * 38).toFixed(1)}px)`;
-  };
-  const end = (e) => { if (e.pointerId !== stick.id) return; stick.id = -1; stick.x = stick.y = 0; nub.style.transform = ''; };
-  el.addEventListener('pointerdown', (e) => { stick.id = e.pointerId; el.setPointerCapture(e.pointerId); move(e); sfx.resume(); e.preventDefault(); });
-  el.addEventListener('pointermove', (e) => { if (e.pointerId === stick.id) move(e); });
-  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
-  for (const [id, key] of [['pad-boost', 'boost'], ['pad-drift', 'drift']]) {
-    const b = $(id);
-    const set = (on) => (e) => { pads[key] = on; b.classList.toggle('on', on); if (on) b.setPointerCapture(e.pointerId); e.preventDefault(); };
-    b.addEventListener('pointerdown', set(true)); b.addEventListener('pointerup', set(false)); b.addEventListener('pointercancel', set(false));
-  }
+const stickEl = $('stick'), nubEl = $('stick-nub'), padEls = { boost: $('pad-boost'), drift: $('pad-drift') };
+function moveStick(e) {
+  const r = stickEl.getBoundingClientRect();
+  let dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2), dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+  const len = Math.hypot(dx, dy);
+  if (len > 1) { dx /= len; dy /= len; }
+  stick.x = dx; stick.y = dy;
+  const reach = r.width * 0.29;      // how far the nub travels inside the ring
+  nubEl.style.transform = `translate(${(dx * reach).toFixed(1)}px, ${(dy * reach).toFixed(1)}px)`;
 }
+function dropStick() { stick.id = -1; stick.x = stick.y = 0; nubEl.style.transform = ''; }
+function setPad(key, on) { pads[key] = on; padEls[key].classList.toggle('on', on); }
+// A finger can leave without a pointerup: the system takes the gesture, the capture is lost.
+const ENDS = ['pointerup', 'pointercancel', 'lostpointercapture'];
+stickEl.addEventListener('pointerdown', (e) => { stick.id = e.pointerId; stickEl.setPointerCapture(e.pointerId); moveStick(e); sfx.resume(); e.preventDefault(); });
+stickEl.addEventListener('pointermove', (e) => { if (e.pointerId === stick.id) moveStick(e); });
+for (const type of ENDS) stickEl.addEventListener(type, (e) => { if (e.pointerId === stick.id) dropStick(); });
+for (const key of ['boost', 'drift']) {
+  const b = padEls[key];
+  let finger = -1;
+  b.addEventListener('pointerdown', (e) => { finger = e.pointerId; setPad(key, true); b.setPointerCapture(e.pointerId); sfx.resume(); e.preventDefault(); });
+  for (const type of ENDS) b.addEventListener(type, (e) => { if (e.pointerId === finger) { finger = -1; setPad(key, false); } });
+}
+// The first real touch turns the touch controls on where the main pointer is not a finger.
+addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && useTouch()) sizeHud(); }, { capture: true, passive: true });
+
+// Everything held is let go when the window loses focus, the tab is hidden or a menu opens.
+// Otherwise a key or a thumb that was down at that moment would still be driving afterwards.
+function releaseAll() { keys.clear(); dropStick(); setPad('boost', false); setPad('drift', false); }
+addEventListener('blur', releaseAll);
+document.addEventListener('visibilitychange', releaseAll);
+addEventListener('pagehide', releaseAll);
 
 // Controller: left stick steers, right trigger drives, A opens, X or RB boosts, B drifts and backs out.
 const padPrev = [];
@@ -800,4 +840,3 @@ $('panel-body').addEventListener('click', (e) => {
   setOverlay(null);       // back to the world, with the music
 });
 canvasEl.addEventListener('pointerdown', () => { sfx.resume(); if (game.mode === 'play') canvasEl.focus({ preventScroll: true }); });
-$('pr-key').textContent = coarse ? 'Tap' : 'E';

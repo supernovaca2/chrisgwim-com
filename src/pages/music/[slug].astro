@@ -197,6 +197,8 @@ const jsonLd = {
     text-align: right;
     font-size: 15px;
   }
+  /* Padded so a thumb can hit a one-word link. */
+  .details a { display: inline-block; padding: 7px 8px; margin: -7px -8px; }
   .details a:hover,
   .details a:focus-visible { color: var(--accent); }
   .adjacent {
@@ -238,9 +240,9 @@ const jsonLd = {
     font-size: 22px;
     line-height: 1;
     text-transform: uppercase;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* Wraps rather than ending in an ellipsis: "Tchaikovsky Swan Lake Enchanted" is the title. */
+    overflow-wrap: anywhere;
+    text-wrap: balance;
   }
   .adjacent-link:hover .adjacent-title,
   .adjacent-link:focus-visible .adjacent-title { color: var(--accent); }

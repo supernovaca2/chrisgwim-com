@@ -22,12 +22,13 @@ function updateHud(dt) {
 let lastW = 0, lastH = 0;
 function syncSize() {
   const w = innerWidth, h = innerHeight;
-  if (w < 64 || h < 64 || (w === lastW && h === lastH)) return;
+  if (w < 64 || h < 64 || (w === lastW && h === lastH)) return false;
   lastW = w; lastH = h;
   camera.aspect = w / h; camera.updateProjectionMatrix();
   renderer.setSize(w, h); composer.setSize(w, h);
   sizeHud();
   if (game.overlay === 'map') drawMap();
+  return true;
 }
 
 // ---------- Loop: simulate in fixed slices, then draw ----------
@@ -49,47 +50,67 @@ function tick(dt, forced) {
   sfx.drive(player.speed, player.boosting, simulating);
 }
 // A slow GPU gets fewer pixels, not fewer frames: after a sustained run of long frames the
-// drawing resolution steps down, at most three times, and never back up mid-session.
-let slowFor = 0, dprNow = DPR;
+// drawing resolution steps down, at most three times.
+// Fewer pixels only help when the GPU is what is slow. On many phones it is the CPU, and there
+// a smaller picture is just a blurrier one at the same frame rate. So every step down is a
+// trial: if frames do not come clearly faster (a sixth or more; a third fewer pixels should buy
+// that when the GPU is the limit), the pixels go back and it stops trying.
+let slowFor = 0, dprNow = DPR, frameAvg = 0, trial = null, settled = false;
+function setResolution(dpr) {
+  dprNow = dpr;
+  renderer.setPixelRatio(dpr); composer.setPixelRatio(dpr);
+  starU.uPx.value = dpr;
+}
 function adaptResolution(raw) {
   if (raw > 0.25 || game.overlay || game.mode === 'boot') return;      // a tab switch, a pause: not a slow GPU
+  frameAvg = frameAvg ? frameAvg + (raw - frameAvg) * 0.06 : raw;
+  if (trial) {
+    trial.time += raw;
+    if (trial.time < 1.6) return;      // long enough for the average to be about the new size only
+    if (frameAvg > trial.before * 0.84) { setResolution(trial.from); settled = true; }
+    trial = null; slowFor = 0;
+    return;
+  }
+  if (settled) return;
   slowFor = raw > 0.024 ? slowFor + raw : Math.max(0, slowFor - raw * 0.5);
   if (slowFor < 2.5 || dprNow <= 0.8) return;
-  slowFor = 0;
-  dprNow = Math.max(0.75, dprNow * 0.8);
-  renderer.setPixelRatio(dprNow); composer.setPixelRatio(dprNow);
-  starU.uPx.value = dprNow;
+  trial = { before: frameAvg, from: dprNow, time: 0 };
+  setResolution(Math.max(0.75, dprNow * 0.8));
 }
-let lastNow = performance.now();
+let lastNow = performance.now(), covered = 0;
 function frame(now) {
   requestAnimationFrame(frame);
-  syncSize();
+  const resized = syncSize();
   adaptResolution((now - lastNow) / 1000);
   const dt = Math.min(0.05, Math.max(0, (now - lastNow) / 1000));
   lastNow = now;
   tick(dt);
-  composer.render();
+  // Under a full-screen menu the world is a dim blur and nothing in it can be seen moving.
+  // Once the menu has faded in, the last frame is held: a phone gets its GPU back for
+  // scrolling the track list, and a paused game stops draining the battery.
+  covered = game.overlay && game.overlay !== 'panel' ? covered + dt : 0;
+  if (covered < 0.5 || resized) composer.render();
 }
 
 // ---------- Boot ----------
 placePlayer(SPAWN.x, SPAWN.z, SPAWN.yaw);
 syncSize();
-function ready() {
-  if (game.mode !== 'boot') return;
-  game.mode = 'title';
-  $('load').hidden = true; $('menu').hidden = false;
-  refreshTitleMenu();
-  // A bare #token deep-links: #play, #map, #tracks, #lane-b, or a release slug.
+// A bare #token deep-links: #play, #map, #tracks, #lane-b, or a release slug. At boot the
+// player is simply put there; later (an edited address, a link clicked while the page is
+// open) the same places are reached the way the menus reach them.
+function followHash(booting) {
   let h = '';
   try { h = decodeURIComponent(location.hash.slice(1)); } catch (err) { h = ''; }
   const lane = /^lane-([a-z])$/.exec(h);
-  if (h === 'play') startGame();
+  const district = lane && districts.find((x) => x.lane.bus.toLowerCase() === lane[1]);
+  if (h === 'series') location.replace(new URL('music/#series', document.baseURI).href);      // it used to be a section of this page
+  else if (h === 'play') { setOverlay(null); startGame(); }
   else if (h === 'tracks') openSheet('tracks');
   else if (h === 'map') { startGame(true); openSheet('map'); }
-  else if (lane) {
-    const d = districts.find((x) => x.lane.bus.toLowerCase() === lane[1]);
-    if (d) { startGame(true); placePlayer(d.x - d.dx * (d.r + 8), d.z - d.dz * (d.r + 8), d.bearing); cam.ease = 1; cam.snap = true; }
-  } else if (bySlug.has(h)) {
+  else if (district && !booting) goToDistrict(district);
+  else if (district) { startGame(true); placePlayer(district.x - district.dx * (district.r + 8), district.z - district.dz * (district.r + 8), district.bearing); cam.ease = 1; cam.snap = true; }
+  else if (bySlug.has(h) && !booting) goToRelease(h, true);
+  else if (bySlug.has(h)) {
     const m = monoliths.find((x) => x.r.slug === h && !x.hero) || monolithsOf(h)[0];
     startGame(true);
     placePlayer(...frontOf(m));
@@ -98,7 +119,19 @@ function ready() {
     cam.snap = true;
   }
 }
-manager.onProgress = (url, loaded, total) => { $('load-bar').style.transform = `scaleX(${(loaded / total).toFixed(3)})`; };
+addEventListener('hashchange', () => { if (game.mode !== 'boot' && !game.traveling) followHash(false); });
+
+function ready() {
+  if (game.mode !== 'boot') return;
+  game.mode = 'title';
+  $('menu').hidden = false;
+  refreshTitleMenu();
+  followHash(true);
+  // Lift the loading cover two frames on, so a finished, textured frame is already behind it.
+  bootProgress(1);
+  requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.remove('booting')));
+}
+manager.onProgress = (url, loaded, total) => bootProgress(0.35 + 0.65 * (loaded / total));
 manager.onLoad = ready;
 manager.onError = () => {};
 setTimeout(ready, 9000);
@@ -106,7 +139,7 @@ requestAnimationFrame(frame);
 
 // A handle for testing the simulation without a screen or a keyboard. Development builds only.
 if (import.meta.env.DEV) window.__ow = {
-  game, player, input, cam, save, monoliths, districts, interactables, colliders,
+  game, player, input, cam, save, monoliths, districts, interactables, colliders, renderer,
   startGame, goToRelease, goToDistrict, goToHub, discover, openItem, setOverlay, openSheet, placePlayer, resetProgress, heightAt,
   advance(seconds, forced = {}) {
     syncSize();

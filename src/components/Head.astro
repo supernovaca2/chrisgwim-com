@@ -48,12 +48,13 @@ const musicGroup = {
 <meta name="description" content={description} />
 <meta name="theme-color" content="#08090b" />
 <meta name="referrer" content="strict-origin-when-cross-origin" />
-<link rel="canonical" href={canonical} />
+{/* The 404 is served for every unknown path; it has no address of its own to declare. */}
+{!noindex && <link rel="canonical" href={canonical} />}
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Chris Gwim" />
-<meta property="og:url" content={canonical} />
+{!noindex && <meta property="og:url" content={canonical} />}
 <meta property="og:image" content={ogImageAbs} />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={title} />

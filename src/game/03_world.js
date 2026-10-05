@@ -81,6 +81,9 @@ function makeMonolith(r, lane, x, z, nx, nz, size, hero) {
   const frameMat = glowMat(lane.color, 0.2);
   const plateMat = new THREE.MeshBasicMaterial({ map: plateTexture(r, lane, hero) });
   const plateW = W + 2.2, plateH = plateW * (96 / 1024);
+  // Both faces of the slab carry the cover. Only the one toward the camera is ever seen, so the
+  // two sets are kept apart and updateWorld draws just that one.
+  const sides = { 1: [], [-1]: [] };
   for (const s of [1, -1]) {
     const frame = new THREE.Mesh(planeGeo, frameMat);
     frame.scale.set(size + 0.42, size + 0.42, 1); frame.position.set(0, cy, s * 0.405);
@@ -90,6 +93,7 @@ function makeMonolith(r, lane, x, z, nx, nz, size, hero) {
     plate.scale.set(plateW, plateH, 1); plate.position.set(0, (baseH - sunk) / 2 + 0.04, s * 1.705);
     if (s < 0) { frame.rotation.y = Math.PI; face.rotation.y = Math.PI; plate.rotation.y = Math.PI; }
     g.add(frame, face, plate);
+    sides[s].push(frame, face, plate);
   }
 
   const top = cy + W / 2;
@@ -116,6 +120,7 @@ function makeMonolith(r, lane, x, z, nx, nz, size, hero) {
       m.scale.set(W, W * 0.125, 1); m.position.set(0, top + W * 0.0625 + 0.25, s * 0.2);
       if (s < 0) m.rotation.y = Math.PI;
       g.add(m);
+      sides[s].push(m);
     }
     const bar = shade(new THREE.Mesh(new THREE.BoxGeometry(W, W * 0.125 + 0.5, 0.36), STONE_DARK));
     bar.position.set(0, top + W * 0.0625 + 0.25, 0);
@@ -125,7 +130,7 @@ function makeMonolith(r, lane, x, z, nx, nz, size, hero) {
 
   for (const o of [-0.34, 0, 0.34]) colliders.push({ x: x + nz * o * (W + 2.6), z: z - nx * o * (W + 2.6), r: 2.25, top: y0 + cy + W / 2 });
   const m = {
-    r, lane, x, z, y0, nx, nz, size, hero, group: g, cy: y0 + cy, cover, frameMat, core, halo, pool, tex,
+    r, lane, x, z, y0, nx, nz, size, hero, group: g, cy: y0 + cy, cover, frameMat, core, halo, pool, tex, front: sides[1], back: sides[-1], frontShown: null,
     laneColor: new THREE.Color(lane.color), found: false, k: 0, large: false, reach: size * 1.15 + 7, sense: size * 1.5 + 8,
   };
   monoliths.push(m);
