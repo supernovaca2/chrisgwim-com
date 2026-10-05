@@ -2,9 +2,11 @@
 import '@fontsource-variable/big-shoulders-display';
 import '@fontsource-variable/instrument-sans';
 import '../styles/tokens.css';
+import Head from '../components/Head.astro';
 import Header from '../components/Header.astro';
 import Studio from '../components/Studio.astro';
 import { getReleases, PLATFORMS } from '../lib/releases';
+import { CONTACT_EMAIL } from '../lib/site';
 
 interface Props {
   title: string;
@@ -13,59 +15,18 @@ interface Props {
   ogImage?: string;
   /** Extra JSON-LD for the page (a MusicRecording on release pages). */
   jsonLd?: Record<string, unknown>;
-  /** Which nav item is current. */
-  current?: 'home' | 'music' | 'story';
+  /** Which nav item is current. The home page (Overworld) does not use this layout. */
+  current?: 'music' | 'story';
   /** Keep the page out of search results (the 404). */
   noindex?: boolean;
 }
-const { title, description, ogImage = '/artist-portrait.jpg', jsonLd, current, noindex = false } = Astro.props;
-const base = import.meta.env.BASE_URL.endsWith('/')
-  ? import.meta.env.BASE_URL
-  : import.meta.env.BASE_URL + '/';
-const site = Astro.site ?? new URL('https://chrisgwim.com');
-const canonical = new URL(Astro.url.pathname, site).toString();
-const ogImageAbs = new URL(ogImage, site).toString();
+const { title, description, ogImage, jsonLd, current, noindex = false } = Astro.props;
 const releases = await getReleases();
-
-// Shown as visible footer text, not just a mailto href: Spotify for Artists
-// reviewers need to SEE the address next to the artist to verify a request.
-const CONTACT_EMAIL = 'chrisgwim@chrisgwim.com';
-
-const musicGroup = {
-  '@context': 'https://schema.org',
-  '@type': 'MusicGroup',
-  name: 'Chris Gwim',
-  url: site.toString(),
-  email: CONTACT_EMAIL,
-  image: ogImageAbs,
-  genre: ['Electronic', 'Techno', 'Classical Fusion', 'House', 'Piano'],
-  sameAs: PLATFORMS.map((p) => p.url),
-};
 ---
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
-    <meta name="theme-color" content="#08090b" />
-    <link rel="canonical" href={canonical} />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Chris Gwim" />
-    <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={ogImageAbs} />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={ogImageAbs} />
-    {noindex && <meta name="robots" content="noindex" />}
-    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
-    <link rel="sitemap" href={`${base}sitemap-index.xml`} />
-    <script type="application/ld+json" set:html={JSON.stringify(musicGroup)} />
-    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    <Head title={title} description={description} ogImage={ogImage} jsonLd={jsonLd} noindex={noindex} />
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -73,7 +34,7 @@ const musicGroup = {
     <main id="main">
       <slot />
     </main>
-    <Studio referral={current === 'home'} />
+    <Studio />
     <footer class="footer">
       <div class="wrap">
         <p class="billing">
@@ -90,6 +51,7 @@ const musicGroup = {
           ))}
         </ul>
         <p class="footer-line">
+          {/* The address itself is the link text: a reviewer has to be able to read it. */}
           <span>Contact <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></span>
           <span>© 2026 Chris Gwim</span>
         </p>

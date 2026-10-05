@@ -1,13 +1,8 @@
 ---
-// Two evergreen cross-links before the footer. Lunthra (the sibling brand) on
-// every page; the SoundCloud Artist Pro referral on the home page only.
-// Deliberately no product feed, so neither goes stale.
-interface Props {
-  referral?: boolean;
-}
-const { referral = false } = Astro.props;
-const LUNTHRA_URL = 'https://lunthra.com';
-const REFERRAL_URL = 'https://invite.soundcloud.com/magnusnova!8bf953f927!a';
+// The sibling brand, linked before the footer of every page. Deliberately no
+// product feed, so it never goes stale. The home page (Overworld) carries the
+// same link, and the SoundCloud Artist Pro referral, on its title screen.
+import { LUNTHRA_URL } from '../lib/site';
 ---
 <aside class="studio" aria-label="Also from the studio">
   <div class="wrap studio-grid">
@@ -17,14 +12,6 @@ const REFERRAL_URL = 'https://invite.soundcloud.com/magnusnova!8bf953f927!a';
       <p class="studio-copy">Science and sci-fi apparel, printed to order.</p>
       <a class="btn studio-link" href={LUNTHRA_URL} target="_blank" rel="noopener">Visit the store ↗</a>
     </div>
-    {referral && (
-      <div class="studio-card">
-        <p class="eyebrow">Support the music</p>
-        <p class="studio-mark">Artist Pro</p>
-        <p class="studio-copy">Get a free month of SoundCloud Artist Pro on me.</p>
-        <a class="btn" href={REFERRAL_URL} target="_blank" rel="noopener">Claim your free month ↗</a>
-      </div>
-    )}
   </div>
 </aside>
 

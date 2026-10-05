@@ -3,16 +3,18 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 export type Release = CollectionEntry<'releases'>;
 
 // Lanes are the genre groups the catalog is filed under. Order is display
-// order on the home page and in the /music filter. A release's `lane` field
-// must match one of these names exactly (the schema enforces it).
+// order in the /music filter and the order of Overworld's districts, clockwise
+// from north. A release's `lane` field must match one of these names exactly
+// (the schema enforces it). `color` is the lane's light in Overworld: its
+// beacons, road studs and district landmark.
 export const LANES = [
-  { name: 'Classical Fusion', bus: 'A', blurb: 'Symphonic motifs rebuilt at club tempo' },
-  { name: 'Techno & Trance', bus: 'B', blurb: 'Melodic techno, trance, story tracks' },
-  { name: 'House & EDM', bus: 'C', blurb: 'Progressive, melodic house, synthwave' },
-  { name: 'Bass', bus: 'D', blurb: 'Drum & bass, trap, G-funk low end' },
-  { name: 'Piano', bus: 'E', blurb: 'Solo piano and baroque crossover' },
-  { name: 'Punk & Rock', bus: 'F', blurb: 'Synth punk, electro punk, grunge' },
-  { name: 'World & Pop', bus: 'G', blurb: 'Soca, afrobeats, pop' },
+  { name: 'Classical Fusion', bus: 'A', blurb: 'Symphonic motifs rebuilt at club tempo', color: '#ffb347' },
+  { name: 'Techno & Trance', bus: 'B', blurb: 'Melodic techno, trance, story tracks', color: '#5a7dff' },
+  { name: 'House & EDM', bus: 'C', blurb: 'Progressive, melodic house, synthwave', color: '#2ee6c5' },
+  { name: 'Bass', bus: 'D', blurb: 'Drum & bass, trap, G-funk low end', color: '#a35cff' },
+  { name: 'Piano', bus: 'E', blurb: 'Solo piano and baroque crossover', color: '#dfe6ff' },
+  { name: 'Punk & Rock', bus: 'F', blurb: 'Synth punk, electro punk, grunge', color: '#ff4d5e' },
+  { name: 'World & Pop', bus: 'G', blurb: 'Soca, afrobeats, pop', color: '#ff7ad9' },
 ] as const;
 
 export type LaneName = (typeof LANES)[number]['name'];
@@ -77,11 +79,11 @@ export function classicalSeries(releases: Release[]) {
 const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 export const inWords = (n: number) => NUMBER_WORDS[n] ?? String(n);
 
-export const dateLong = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-// Built by hand: ICU's en-GB short month is "Sept", which reads oddly beside the other three-letter months.
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-export const dateShort = (iso: string) => `${Number(iso.slice(8, 10))} ${MONTHS[Number(iso.slice(5, 7)) - 1]}`;
+// American order, built by hand so the output never depends on the ICU data of
+// whichever machine runs the build: "October 5, 2026" and "Oct 5".
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export const dateLong = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}, ${iso.slice(0, 4)}`;
+export const dateShort = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1].slice(0, 3)} ${Number(iso.slice(8, 10))}`;
 
 // Visual mode puts the art behind the controls; the white classic widget glared on black.
 export const playerSrc = (soundcloudId: number) =>

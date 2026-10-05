@@ -11,18 +11,18 @@ const base = import.meta.env.BASE_URL.endsWith('/')
 ---
 <Base
   title="Not showing — Chris Gwim"
-  description="This page is not on chrisgwim.com. The full catalogue is one click away."
+  description="This page is not on chrisgwim.com. The full catalog is one click away."
   noindex
 >
   <section class="wrap lost">
     <p class="eyebrow">Error 404 · not showing</p>
     <h1 class="lost-title">This reel<br />is missing.</h1>
     <p class="lost-copy">
-      The track may have been pulled from the catalogue, or the link is mistyped.
-      Everything that is out right now is in the catalogue.
+      The track may have been pulled from the catalog, or the link is mistyped.
+      Everything that is out right now is in the catalog.
     </p>
     <div class="lost-actions">
-      <a class="btn btn-primary" href={`${base}music/`}>The catalogue</a>
+      <a class="btn btn-primary" href={`${base}music/`}>The catalog</a>
       <a class="btn" href={`${base}music/${latest.id}/`}>Now showing: {latest.data.title}</a>
       <a class="btn" href={base}>Home</a>
     </div>
