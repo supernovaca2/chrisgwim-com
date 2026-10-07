@@ -58,16 +58,16 @@ const coverImages = () => ({
   },
 });
 
-// Overworld (the home page) is written as numbered parts that share one scope;
-// see src/game/README.md. This splices them, in order, into overworld.js.
-const overworldParts = () => {
+// Wave Invasion (the home page) is written as numbered parts that share one
+// scope; see src/game/README.md. This splices them, in order, into invasion.js.
+const gameParts = () => {
   const dir = fileURLToPath(new URL('./src/game/', import.meta.url));
   return {
-    name: 'overworld-parts',
+    name: 'game-parts',
     enforce: 'pre',
     transform(code, id) {
-      if (!id.split('?')[0].replaceAll('\\', '/').endsWith('/src/game/overworld.js')) return null;
-      if (!code.includes('/* @parts */')) this.error('src/game/overworld.js has lost its /* @parts */ marker');
+      if (!id.split('?')[0].replaceAll('\\', '/').endsWith('/src/game/invasion.js')) return null;
+      if (!code.includes('/* @parts */')) this.error('src/game/invasion.js has lost its /* @parts */ marker');
       const files = readdirSync(dir).filter((f) => /^[0-9][0-9]_.+[.]js$/.test(f)).sort();
       for (const f of files) this.addWatchFile(join(dir, f));
       const body = files.map((f) => `// ---- ${f} ----\n${readFileSync(join(dir, f), 'utf8')}`).join('\n');
@@ -104,7 +104,17 @@ export default defineConfig({
   markdown: { syntaxHighlight: false },
   // The dev toolbar sits at the bottom center of the page, on top of the game's thumb controls.
   devToolbar: { enabled: false },
-  // The game and three.js ship as one 590 KB chunk (156 KB gzipped), loaded by the home page
+  // The game and three.js ship as one 620 KB chunk (166 KB gzipped), loaded by the home page
   // only. That is expected; tests/build-output.test.js holds the real budget.
-  vite: { plugins: [overworldParts()], build: { chunkSizeWarningLimit: 700 } },
+  // No font or image is inlined as a data: URL either: the policy refuses them, and Vite inlines
+  // any asset under 4 KB by default (Chakra Petch's Vietnamese subsets were). Other files keep the
+  // default, because Astro asks the same question before writing a small script into the page,
+  // and src/game/shell.js has to be written into the page.
+  vite: {
+    plugins: [gameParts()],
+    build: {
+      chunkSizeWarningLimit: 800,
+      assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf|png|jpe?g|gif|webp|avif|svg)$/i.test(file) ? false : undefined),
+    },
+  },
 });

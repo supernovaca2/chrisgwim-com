@@ -4,7 +4,7 @@ import { glob } from 'astro/loaders';
 // SoundCloud is the source of truth for what is public. One JSON file per
 // track; the site derives counts, lanes, the featured release, per-track
 // players, and structured data from these files alone.
-// Release links are written into pages and into Overworld. z.string().url()
+// Release links are written into pages and into the game. z.string().url()
 // alone would accept a javascript: URL, and these files are written by an
 // unattended sync as well as by hand.
 const httpsUrl = z.string().url().refine((u) => u.startsWith('https://'), 'must be an https:// URL');

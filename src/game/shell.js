@@ -7,7 +7,7 @@
 // not import it. The two talk through the page:
 //
 //   <html data-game>      set by the game's script the moment it starts
-//   overworld:failed      dispatched on document by the game when it cannot
+//   game:failed           dispatched on document by the game when it cannot
 //                         run; event.detail is the sentence to show
 
 /**
@@ -36,12 +36,12 @@ function showFallback(message) {
 }
 
 paintLanes();
-document.addEventListener('overworld:failed', (event) => showFallback(String(event.detail || '')));
+document.addEventListener('game:failed', (event) => showFallback(String(event.detail || '')));
 // By now every script on the page has either run or failed to load. No mark from the game
 // means it never arrived, and nothing else is going to lift the loading cover.
 document.addEventListener('DOMContentLoaded', () => {
   if ('game' in document.documentElement.dataset) return;
-  showFallback('The 3D world did not load, so here is every release. ');
+  showFallback('The game did not load, so here is every release. ');
   // Usually a dropped connection, so offer the one thing that fixes it.
   const again = document.createElement('a');
   again.href = location.pathname;

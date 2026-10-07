@@ -1,12 +1,12 @@
-// Everything Overworld (the home page) needs to know about the catalog, worked
-// out at build time and inlined into the page as one JSON block. The game never
-// fetches anything but images.
+// Everything Wave Invasion (the home page) needs to know about the catalog,
+// worked out at build time and inlined into the page as one JSON block. The game
+// never fetches anything but images.
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { getReleases, LANES, PLATFORMS, ACCENT_HEX } from './releases';
-import { coverPoster } from './images';
+import { coverPoster, coverThumb } from './images';
 import { CONTACT_EMAIL, LUNTHRA_URL, REFERRAL_URL } from './site';
-import { sameArt, castColor } from './cover-art.mjs';
+import { sameArt } from './cover-art.mjs';
 
 // Pages are bundled before they run, so import.meta.url no longer points into
 // src/. The build always runs from the repo root.
@@ -19,8 +19,8 @@ export async function gameData(base: string) {
       const file = r.data.cover.replace(/^\/?covers\//, '');
       const cover = join(covers, file);
       const hd = join(covers, 'hd', file);
-      // Up close a monolith shows the original upload, but only while it is
-      // still the same art as the cover (see sameArt).
+      // The large size is the original upload, but only while it is still the
+      // same art as the cover (see sameArt).
       const hiRes = existsSync(hd) && (await sameArt(cover, hd));
       return {
         slug: r.id,
@@ -33,7 +33,7 @@ export async function gameData(base: string) {
         scId: r.data.soundcloudId,
         primary: r.data.primaryUrl,
         notes: r.data.description ?? '',
-        tint: await castColor(cover),
+        thumb: coverThumb(r.data.cover, base),
         card: coverPoster(r.data.cover, base),
         large: `${base}covers/${hiRes ? 'hd/' : ''}${file}`,
         page: `${base}music/${r.id}/`,

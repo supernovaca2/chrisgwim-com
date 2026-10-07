@@ -3,10 +3,10 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 export type Release = CollectionEntry<'releases'>;
 
 // Lanes are the genre groups the catalog is filed under. Order is display
-// order in the /music filter and the order of Overworld's districts, clockwise
-// from north. A release's `lane` field must match one of these names exactly
-// (the schema enforces it). `color` is the lane's light in Overworld: its
-// beacons, road studs and district landmark.
+// order in the /music filter and the order of Wave Invasion's waves (bus A is
+// wave 1). A release's `lane` field must match one of these names exactly
+// (the schema enforces it). `color` is the lane's color in the game: its wave's
+// invaders, its grid and the glow of its records.
 export const LANES = [
   { name: 'Classical Fusion', bus: 'A', blurb: 'Symphonic motifs rebuilt at club tempo', color: '#ffb347' },
   { name: 'Techno & Trance', bus: 'B', blurb: 'Melodic techno, trance, story tracks', color: '#5a7dff' },
