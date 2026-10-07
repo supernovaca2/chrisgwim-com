@@ -29,8 +29,8 @@ const htmlPages = () => walk(distRoot).filter((f) => f.endsWith('.html'));
 
 // All the CSS the site ships, whether Astro emits an external stylesheet or
 // inlines it into a page (it inlines any sheet under ~4KB). Every page is read,
-// not just the home page: the home page is Overworld and shares no styles with
-// the others.
+// not just the home page: the home page is Wave Invasion and shares no styles
+// with the others.
 const shippedStyles = () =>
   textFiles().filter((f) => f.endsWith('.css')).map((f) => readFileSync(f, 'utf8')).join('\n') +
   htmlPages().map((f) => readFileSync(f, 'utf8')).join('\n');
@@ -42,7 +42,7 @@ const newestFirst = () =>
   releases().sort((a, b) => b.datePublished.localeCompare(a.datePublished) || a.title.localeCompare(b.title));
 
 const home = () => readFileSync(dist('index.html'), 'utf8');
-// The catalog as Overworld receives it: one JSON block inlined in the home page.
+// The catalog as the game receives it: one JSON block inlined in the home page.
 const gameData = () => {
   const block = home().match(/<script id="data" type="application\/json">([\s\S]*?)<\/script>/);
   assert.ok(block, 'the home page should inline the catalog for the game');
@@ -62,14 +62,14 @@ test('CNAME survives the build into dist', () => {
 // --- Premiere (2026-10-04) --------------------------------------------------
 
 // The accent is a literal hex in three places the CSS token cannot reach: the
-// SoundCloud embeds on the release pages, the player Overworld docks, and this test.
+// SoundCloud embeds on the release pages, the player the game docks, and this test.
 const ACCENT = 'ff3d3d';
 test('the current accent reaches the build, including both SoundCloud players', () => {
   assert.match(shippedStyles(), new RegExp(`#${ACCENT}`, 'i'), `expected --accent #${ACCENT} in shipped CSS`);
   const newest = newestFirst()[0];
   assert.match(readFileSync(dist(`music/${newest.slug}/index.html`), 'utf8'), new RegExp(`color=%23${ACCENT}`, 'i'),
     'the SoundCloud embed on a release page must use the current accent');
-  assert.equal(gameData().accent, ACCENT, 'Overworld builds its docked player with the same accent');
+  assert.equal(gameData().accent, ACCENT, 'the game builds its docked player with the same accent');
 });
 
 // Earlier themes bypassed their tokens in several places, including the embed's
@@ -87,11 +87,16 @@ test('every face is self-hosted and reaches the build', () => {
   const css = shippedStyles();
   assert.match(css, /Big Shoulders Display Variable/, 'expected the display @font-face');
   assert.match(css, /Instrument Sans Variable/, 'expected the body @font-face');
-  assert.match(css, /Geist Mono Variable/, "expected Overworld's HUD @font-face");
+  // The home page's own faces: the game's marquee and its body text.
+  for (const face of ['Bungee', 'Bungee Inline', 'Chakra Petch']) assert.match(css, new RegExp(`font-family:\\s*['"]?${face}['"]?[;}]`), `expected the ${face} @font-face`);
   assert.ok(walk(distRoot).some((f) => /big-shoulders-display.*\.woff2$/.test(f)), 'display woff2 missing from dist');
   assert.ok(walk(distRoot).some((f) => /instrument-sans.*\.woff2$/.test(f)), 'body woff2 missing from dist');
-  assert.ok(walk(distRoot).some((f) => /geist-mono.*\.woff2$/.test(f)), 'mono woff2 missing from dist');
+  for (const file of [/bungee-latin-400.*\.woff2$/, /bungee-inline-latin-400.*\.woff2$/, /chakra-petch-latin-[567]00-normal.*\.woff2$/]) {
+    assert.ok(walk(distRoot).some((f) => file.test(f)), `${file} missing from dist`);
+  }
   assert.doesNotMatch(css, /fonts\.googleapis\.com|fonts\.gstatic\.com/, 'fonts must not load from Google');
+  // font-src and img-src are 'self' only: an asset Vite inlined as a data: URL is refused (2026-10-07).
+  assert.doesNotMatch(css, /url\(\s*['"]?data:/, 'an asset was inlined as a data: URL, which the policy refuses');
 });
 
 test('the classical series lists every composer release and the nav can reach it', () => {
@@ -114,14 +119,15 @@ test('the Lunthra cross-link is on every page and links out cleanly', () => {
   assert.match(home(), /invite\.soundcloud\.com/, 'the referral sits on the home page');
 });
 
-// --- Overworld, the home page (2026-10-05) ----------------------------------
-// The home page is a game. What must stay true of it is that it is still a
-// page: the whole catalog is in its markup as plain links, and the game is
-// handed exactly the catalog the rest of the site is built from.
+// --- The home page is a game (Overworld 2026-10-05, Wave Invasion 2026-10-07) ---
+// What must stay true of it is that it is still a page: the whole catalog is
+// in its markup as plain links, and the game is handed exactly the catalog the
+// rest of the site is built from.
 
-test('the home page is Overworld, and still carries the whole catalog as plain links', () => {
+test('the home page is Wave Invasion, and still carries the whole catalog as plain links', () => {
   const html = home();
   assert.match(html, /<canvas id="scene"/, 'expected the game canvas');
+  assert.match(html, /aria-label="Wave Invasion"/, 'expected the game named on its title screen');
   assert.match(html, /<h1[^>]*>Chris Gwim<\/h1>/, 'the artist name is the page heading, in the markup');
   assert.match(html, /"@type":"MusicGroup"/, 'expected MusicGroup JSON-LD');
   assert.match(html, /<noscript>/, 'visitors without JavaScript are told where the catalog is');
@@ -132,7 +138,7 @@ test('the home page is Overworld, and still carries the whole catalog as plain l
   assert.match(html, /href="\/story\/"/, 'nor does the way to the story');
 });
 
-test('Overworld is handed the same catalog the pages are built from', () => {
+test('the game is handed the same catalog the pages are built from', () => {
   const data = gameData();
   const expected = newestFirst();
   assert.deepEqual(data.releases.map((r) => r.slug), expected.map((r) => r.slug), 'every release, newest first');
@@ -140,16 +146,19 @@ test('Overworld is handed the same catalog the pages are built from', () => {
     const source = expected[i];
     assert.equal(r.scId, source.soundcloudId, `${r.slug}: the docked player needs its SoundCloud id`);
     assert.equal(r.page, `/music/${r.slug}/`, `${r.slug}: release page link`);
-    assert.match(r.tint, /^#[0-9a-f]{6}$/, `${r.slug}: beacon tint`);
-    assert.match(r.card, /^\/covers\/posters\//, `${r.slug}: monoliths use the 360px posters`);
+    assert.match(r.card, /^\/covers\/posters\//, `${r.slug}: ships and panels use the 360px posters`);
+    assert.match(r.thumb, /^\/covers\/thumbs\//, `${r.slug}: the Records list uses the 132px thumbs`);
     assert.ok(existsSync(dist(r.card.replace(/^\//, ''))), `${r.slug}: ${r.card} missing from dist`);
+    assert.ok(existsSync(dist(r.thumb.replace(/^\//, ''))), `${r.slug}: ${r.thumb} missing from dist`);
     assert.ok(existsSync(dist(r.large.replace(/^\//, ''))), `${r.slug}: ${r.large} missing from dist`);
   }
   const used = new Set(data.releases.map((r) => r.lane));
   for (const lane of data.lanes.filter((l) => used.has(l.name))) {
-    assert.match(lane.color, /^#[0-9a-f]{6}$/i, `${lane.name} needs a color: it lights a whole district`);
+    assert.match(lane.color, /^#[0-9a-f]{6}$/i, `${lane.name} needs a color: it lights a whole wave`);
   }
   assert.deepEqual([...used].filter((name) => !data.lanes.some((l) => l.name === name)), [], 'a release sits in a lane the game does not know');
+  // The waves are written per lane (WAVES in src/game/06_waves.js, bus A is wave 1).
+  assert.ok(data.lanes.length <= 7, 'a new lane needs a wave of its own in src/game/06_waves.js');
 });
 
 // --- Catalog integrity (v2, 2026-09-13) -----------------------------------
@@ -238,7 +247,7 @@ test('the contact email is visible text on every page and in the JSON-LD', () =>
 
   assert.match(home(), /"email":"chrisgwim@chrisgwim\.com"/, 'MusicGroup JSON-LD should carry the email');
   // On the home page the address must be on the title screen itself, in view before anyone presses Start.
-  assert.match(home().match(/<section class="title"[\s\S]*?<\/section>/)[0], new RegExp(email), 'the title screen shows the address');
+  assert.match(home().match(/<section id="title"[\s\S]*?<\/section>/)[0], new RegExp(email), 'the title screen shows the address');
 });
 
 // Grid columns narrow on phones; without these the width/height attributes
@@ -354,8 +363,8 @@ test('every script written into a page is one the policy lists by hash', () => {
 });
 
 test('the production build carries no debug handle', () => {
-  const offenders = walk(dist('_astro')).filter((f) => f.endsWith('.js') && /__ow\b/.test(readFileSync(f, 'utf8')));
-  assert.deepEqual(offenders.map(rel), [], 'window.__ow is for development builds only');
+  const offenders = walk(dist('_astro')).filter((f) => f.endsWith('.js') && /__game\b|__proj\b/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(offenders.map(rel), [], 'window.__game and window.__proj are for development builds only');
 });
 
 // --- Loading and controls (2026-10-05) -----------------------------------------
@@ -399,7 +408,7 @@ test('no font is preloaded', () => {
 test('the page without the game is written into the page, ahead of the game', () => {
   const html = home();
   const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].map((m) => ({ attrs: m[1], body: m[2], at: m.index }));
-  const shell = scripts.find((s) => !/\ssrc=/.test(s.attrs) && /overworld:failed/.test(s.body));
+  const shell = scripts.find((s) => !/\ssrc=/.test(s.attrs) && /game:failed/.test(s.body));
   assert.ok(shell, 'src/game/shell.js should be inlined into the home page (it must import nothing and stay small)');
   assert.match(shell.attrs, /type="module"/);
   assert.doesNotMatch(shell.body, /\bimport\b/, 'the shell must not depend on another file');
@@ -409,22 +418,22 @@ test('the page without the game is written into the page, ahead of the game', ()
   assert.ok(shell.at < game.at, 'the shell must come before the game: module scripts run in order');
   // Both ends of the contract between them.
   const chunk = readFileSync(dist(game.attrs.match(/src="\/([^"]+)"/)[1]), 'utf8');
-  assert.match(chunk, /overworld:failed/, 'the game reports failure to the shell by this event');
+  assert.match(chunk, /game:failed/, 'the game reports failure to the shell by this event');
   assert.match(chunk, /dataset\.game\s*=/, 'the game marks the page when it starts');
   assert.match(shell.body, /dataset/, 'and the shell looks for that mark');
 });
 
-// The HUD lets touches through to the world (pointer-events: none), and the two thumb buttons
-// are not <button> elements. Without their own pointer-events they never received a touch:
-// Boost and Drift did nothing on every phone until 2026-10-05.
+// The HUD lets touches through (pointer-events: none), so anything in it or under it that
+// takes a touch has to say so. Overworld shipped with Boost and Drift dead on every phone
+// until 2026-10-05 for want of that one property.
 test('the touch controls can be touched, and clear the notch', () => {
   const css = homeCss();
-  assert.match(css, /\.hud\{[^}]*pointer-events:\s*none/, 'expected the HUD to let touches through');
-  for (const sel of ['\\.stick', '\\.pad-btn']) {
+  assert.match(css, /#hud\{[^}]*pointer-events:\s*none/, 'expected the HUD to let touches through');
+  for (const [sel, noScroll] of [['#touchpad', true], ['#b-pause', false]]) {
     const rule = css.match(new RegExp(`${sel}\\{[^}]*\\}`));
     assert.ok(rule, `expected a rule for ${sel}`);
     assert.match(rule[0], /pointer-events:\s*auto/, `${sel} must take pointer events back`);
-    assert.match(rule[0], /touch-action:\s*none/, `${sel} must not scroll or zoom the page`);
+    if (noScroll) assert.match(rule[0], /touch-action:\s*none/, `${sel} must not scroll or zoom the page`);
   }
   assert.match(home(), /<meta name="viewport" content="[^"]*viewport-fit=cover/, 'the game draws under the notch');
   for (const side of ['left', 'right', 'top', 'bottom']) assert.match(css, new RegExp(`env\\(safe-area-inset-${side}`), `the interface must respect the ${side} safe area`);
@@ -468,5 +477,5 @@ test('a visit to the home page stays light', () => {
   assert.ok(bytes < 300_000, `home page code is ${(bytes / 1000).toFixed(0)} KB gzipped; the budget is 300 KB`);
   const cards = sizeOf(gameData().releases.map((r) => dist(r.card.replace(/^\//, ''))));
   const perRelease = cards / gameData().releases.length;
-  assert.ok(perRelease < 40_000, `monolith art averages ${(perRelease / 1000).toFixed(0)} KB a release; the budget is 40 KB`);
+  assert.ok(perRelease < 40_000, `cover art for the game averages ${(perRelease / 1000).toFixed(0)} KB a release; the budget is 40 KB`);
 });
