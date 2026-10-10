@@ -137,10 +137,17 @@ const audio = (() => {
   // SoundCloud's docked player is playing a real track, the synthesized music steps aside.
   let duckK = 1, extK = 1;
   const musicLevel = () => 0.62 * duckK * extK;
+  // An iPhone mutes Web Audio with its ring/silent switch unless the page says it plays music
+  // (Safari's Audio Session API; media elements are exempt, synthesized sound is not). Muted in
+  // the game, the page steps back to ambient, so the visitor's own music can play alongside.
+  function sessionType() {
+    try { if (navigator.audioSession) navigator.audioSession.type = save.muted ? 'ambient' : 'playback'; } catch (err) { /* no Audio Session API */ }
+  }
   function ensure() {
     if (ctx) return true;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
+    sessionType();
     try { ctx = new AC({ latencyHint: 'interactive' }); } catch (err) { ctx = null; return false; }
     master = ctx.createGain(); master.gain.value = 0.0001;
     const comp = ctx.createDynamicsCompressor();
@@ -615,12 +622,26 @@ const audio = (() => {
 
   return {
     cond, tick, setStyle, pendingMarch, fx, STYLES, stats,
-    start() { if (ensure() && ctx.state === 'suspended') ctx.resume().catch(() => {}); },
+    // Called from every tap, click and key (part 8). Resumes from 'suspended', and from Safari's
+    // 'interrupted' (a call, another app taking the audio). Older iOS opens the output only when a
+    // source starts inside the gesture itself, hence the one silent sample.
+    start() {
+      // Outside a gesture (the /#play link, a finger's pointerdown) it would be refused anyway.
+      if (navigator.userActivation && !navigator.userActivation.isActive) return;
+      if (!ensure() || ctx.state === 'running') return;
+      ctx.resume().catch(() => {});
+      try {
+        const blip = ctx.createBufferSource();
+        blip.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+        blip.connect(ctx.destination); blip.start(0);
+      } catch (err) { /* the resume above is what matters */ }
+    },
     get ready() { return !!ctx && ctx.state === 'running'; },
     set headless(v) { headless = v; },
     get headless() { return headless; },
     setMuted(m) {
       save.muted = m; persist();
+      sessionType();
       if (!ctx) return;
       master.gain.cancelScheduledValues(ctx.currentTime);
       master.gain.setTargetAtTime(m ? 0.0001 : VOL, ctx.currentTime, 0.06);
@@ -636,6 +657,6 @@ const audio = (() => {
     },
     playKey(m) { cond.keyNotes.push(m); },
     suspend() { if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {}); },
-    resume() { if (ctx && ctx.state === 'suspended' && !save.muted) ctx.resume().catch(() => {}); },
+    resume() { if (ctx && ctx.state !== 'running' && !save.muted) ctx.resume().catch(() => {}); },
   };
 })();

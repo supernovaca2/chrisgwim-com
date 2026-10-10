@@ -368,6 +368,13 @@ addEventListener('keydown', (e) => {
   if (k) { e.preventDefault(); held[k] = true; }
 });
 addEventListener('keyup', (e) => { const k = KEYMAP[e.code]; if (k) held[k] = false; });
+// Browsers start sound only inside a tap, a click or a key press, and a finger's pointerdown is not
+// one of them (its pointerup and touchend are). So every one of those tries, until sound runs:
+// the drag area alone could otherwise never start it, nor bring it back after a phone call.
+// A link is left alone, so leaving the page never starts the title music for a moment.
+for (const name of ['pointerup', 'touchend', 'click']) {
+  addEventListener(name, (e) => { if (!(e.target instanceof Element && e.target.closest('a'))) audio.start(); }, { capture: true, passive: true });
+}
 addEventListener('blur', releaseAll);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { releaseAll(); if (G.mode === 'play' && !G.overlay) pauseGame(); audio.suspend(); } else audio.resume();
