@@ -168,7 +168,9 @@ test('the game is handed the same catalog the pages are built from', () => {
 
 test('every release in the collection builds a page with its own player', () => {
   const all = releases();
-  assert.ok(all.length >= 24, `expected at least 24 releases, found ${all.length}`);
+  // A floor, not the catalog size: tracks taken off SoundCloud on purpose drop the
+  // count, but a near-empty catalog still means the sync went wrong.
+  assert.ok(all.length >= 20, `expected at least 20 releases, found ${all.length}`);
   for (const r of all) {
     const page = dist(`music/${r.slug}/index.html`);
     assert.ok(existsSync(page), `missing page for ${r.slug}`);
