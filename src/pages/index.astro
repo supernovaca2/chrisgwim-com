@@ -1,249 +1,361 @@
 ---
-// The home page is Wave Invasion: the catalog as an arcade invader shooter. The
-// game lives in src/game (see its README); this page is its markup, with
-// everything a crawler or a visitor without WebGL needs rendered here on the
-// server: the name, the way to the catalog and the story, every release as a
-// plain link, and the contact address in plain view.
-import '@fontsource/bungee';
-import '@fontsource/bungee-inline';
-import '@fontsource/chakra-petch/500.css';
-import '@fontsource/chakra-petch/600.css';
-import '@fontsource/chakra-petch/700.css';
-import '../styles/invasion.css';
-import Head from '../components/Head.astro';
-import { fmtDuration, dateShort } from '../lib/releases';
-import { gameData } from '../lib/game-data';
-import { safeJson } from '../lib/site';
+// The home page is the hub (2026-11-15): the newest release as a premiere,
+// every place the music can be heard, the last few releases, the house promos,
+// and who Chris Gwim is with the profiles to follow. It replaced Wave Invasion
+// as the front door; the game is at /play/. Nothing here is typed by hand per
+// release: the SoundCloud sync adds a track and this page follows.
+import Base from '../layouts/Base.astro';
+import PosterGrid from '../components/PosterGrid.astro';
+import { getReleases, LANES, PLATFORMS, dateShort, fmtDuration } from '../lib/releases';
+import { coverLarge } from '../lib/cover-large';
+import { LUNTHRA_URL, REFERRAL_URL, YOUTUBE_CHANNEL_URL } from '../lib/site';
 
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
-const data = await gameData(base);
-const { releases, links, contact } = data;
-const lanes = data.lanes
-  .map((lane) => ({ ...lane, tracks: releases.filter((r) => r.lane === lane.name) }))
-  .filter((lane) => lane.tracks.length > 0);
-const newest = releases[0];
+const releases = await getReleases();
+const [newest, ...earlier] = releases;
+const first = releases[releases.length - 1];
+const lane = LANES.find((l) => l.name === newest.data.lane);
+const lanesInUse = LANES.filter((l) => releases.some((r) => r.data.lane === l.name)).length;
+const heroArt = await coverLarge(newest.data.cover, base);
 const year = (iso: string) => iso.slice(0, 4);
+const monthYear = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+// The title is set as large as its length allows: "Nebula 2.0" fills the
+// screen, "Tchaikovsky Swan Lake Enchanted" must not.
+const titleLength = newest.data.title.length;
+const titleSize = titleLength <= 12 ? 'xl' : titleLength <= 22 ? 'lg' : 'md';
+const profile = (name: string) => PLATFORMS.find((p) => p.name === name)!.url;
+const follow = [
+  { name: 'Spotify', note: 'Artist page', url: profile('Spotify') },
+  { name: 'SoundCloud', note: 'soundcloud.com/chrisgwim', url: profile('SoundCloud') },
+  { name: 'YouTube', note: '@chrisgwim', url: YOUTUBE_CHANNEL_URL },
+];
 ---
-<!doctype html>
-<html lang="en">
-  <head>
-    <Head
-      title="Chris Gwim — Producer"
-      description={`Chris Gwim: ${releases.length} releases across ${lanes.length} lanes, from classical fusion and melodic techno to piano and synth punk. Play the catalog as an arcade shooter, or browse it as a list. Now premiering: ${newest.title}.`}
-      viewport="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    {/* Two scripts, in this order. The first is the page without the game; it is small enough
-        that Astro writes it into the page, so it runs even if the second never arrives. */}
-    <script>
-      import '../game/shell.js';
-    </script>
-    <script>
-      import invasion from '../game/invasion.js';
+<Base
+  title="Chris Gwim — Producer"
+  description={`Chris Gwim, producer: ${releases.length} releases across ${lanesInUse} lanes, from classical fusion and melodic techno to piano and synth punk. New release: ${newest.data.title}. Listen on Spotify, Apple Music, SoundCloud and YouTube.`}
+  current="home"
+  studio={false}
+>
+  <h1 class="visually-hidden">Chris Gwim, producer</h1>
 
-      document.documentElement.dataset.game = 'on';      // shell.js looks for this mark
-      // The classical series used to be a section of this page. Old links to /#series follow it.
-      if (location.hash === '#series') location.replace(new URL('music/#series', document.baseURI).href);
-
-      invasion().catch((err) => {
-        console.error(err);
-        document.dispatchEvent(new CustomEvent('game:failed', { detail: 'Wave Invasion could not start in this browser, so here is every release.' }));
-      });
-    </script>
-  </head>
-  {/* .booting is in the markup, not added by script, so the cover below is up from the very
-      first paint. The game removes the class when the field is ready to be seen. */}
-  <body class="booting">
-    <div class="boot" role="status" aria-label="Loading Wave Invasion">
-      <div class="track"><i id="boot-bar"></i></div>
-      {/* Shown by CSS alone after a few seconds, so it is there even when the script is what is slow. */}
-      <p class="boot-late"><span>Loading Wave Invasion</span><a href={links.catalog}>Taking a while? Browse the catalog instead.</a></p>
-    </div>
-
-    <main>
-      {/* Fixed behind everything; it lives in main so that it sits inside a landmark. */}
-      <canvas id="scene" tabindex="-1" aria-label="Wave Invasion, an arcade shooter. Shoot down the Record Ships and catch the records they drop to unlock Chris Gwim's releases. The Records screen lists every release without playing."></canvas>
-      <div id="atmo" class="layer" aria-hidden="true"></div>
-      <div id="scan" class="layer" aria-hidden="true"></div>
-      <div id="flash" class="layer" aria-hidden="true"></div>
-      <div id="popups" aria-hidden="true"></div>
-
-      <section id="title" class="screen" aria-labelledby="title-h">
-        <div class="t-wrap">
-          <div class="t-main">
-            <div class="logo">
-              <h1 class="logo-by" id="title-h">Chris Gwim</h1>
-              <p class="logo-game" aria-label="Wave Invasion"><span aria-hidden="true">WAVE</span><span class="l2" aria-hidden="true">INVASION</span></p>
-            </div>
-            <div class="bars" id="t-bars" aria-hidden="true"></div>
-            <noscript>
-              <p class="noscript">Wave Invasion is a game and needs JavaScript. Every release is also in <a href={links.catalog}>the catalog</a>.</p>
-            </noscript>
-            <div class="t-menu-slot">
-              <nav class="menu" id="t-menu" aria-label="Main menu" hidden>
-                <button class="btn primary" type="button" data-act="play">Play<span class="k">ENTER</span></button>
-                <button class="btn" type="button" data-act="records">Records<span class="k">R</span></button>
-                <button class="btn" type="button" data-act="how">How to play</button>
-                <button class="btn" type="button" data-act="mute" id="t-mute">Sound: on<span class="k">M</span></button>
-              </nav>
-            </div>
-            <div class="press" id="t-press" hidden>PRESS START</div>
-          </div>
-          <div class="t-side" id="t-side" hidden>
-            <div class="panel sc-panel">
-              <h2>SCORE ADVANCE TABLE</h2>
-              <div class="sct" id="t-score"></div>
-            </div>
-            <div class="panel prem" id="t-prem"></div>
-          </div>
-          <div class="t-foot">
-            <p class="t-stats" id="t-stats" hidden><span>HI-SCORE <b id="t-hi">0</b></span><span>RECORDS <b id="t-rec">0/0</b></span><span id="t-lanes"></span></p>
-            <div class="t-site">
-              <nav aria-label="Browse">
-                <span>Not here to play?</span>
-                <a href={links.catalog}>Browse the catalog</a>
-                <a href={links.story}>Read the story</a>
-                <a href={links.lunthra} target="_blank" rel="noopener">Lunthra apparel ↗</a>
-                <a href={links.referral} target="_blank" rel="noopener">A free month of SoundCloud Artist Pro ↗</a>
-              </nav>
-              <p class="contact">Contact <b>{contact}</b> · © 2026 Chris Gwim</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <nav class="site-nav" aria-label="Site">
-      <a href={links.catalog}>Catalog</a>
-      <a href={links.story}>Story</a>
-    </nav>
-
-    <header id="hud" hidden>
-      <div class="hud-l">
-        <div class="stat"><span class="lbl">SCORE</span><b id="h-score">0</b></div>
-        <div class="stat hi"><span class="lbl">HI-SCORE</span><b id="h-hi">0</b></div>
-      </div>
-      <div class="hud-c">
-        <div class="wave-chip" id="h-wave"><span class="wn" id="h-wave-n">W1</span><span class="wl" id="h-wave-l">CLASSICAL FUSION</span></div>
-        <div id="h-combo">COMBO x1</div>
-      </div>
-      <div class="hud-r">
-        <div class="stat recstat"><span class="lbl">RECORDS</span><b><i class="vinyl"></i><span id="h-rec">0/0</span></b></div>
-        <div id="h-lives" aria-label="Lives"></div>
-        <button id="b-pause" type="button" aria-label="Pause"></button>
-      </div>
-    </header>
-    <div id="h-power" hidden><div class="pn" id="h-power-n"></div><div class="pb"><i id="h-power-b"></i></div></div>
-    <div id="h-boss" hidden><div class="bn" id="h-boss-n">MOTHERSHIP</div><div class="bb"><i id="h-boss-b"></i></div></div>
-    <div id="banner" hidden><div class="bs" id="bn-s"></div><div class="bt" id="bn-t"></div><div class="bb2" id="bn-b"></div><div class="bx" id="bn-x"></div></div>
-    <div id="toast" role="status" aria-live="polite"></div>
-
-    <aside id="unlock" hidden aria-live="polite">
-      <img id="u-img" alt="" width="112" height="112" />
-      <div>
-        <div class="uk" id="u-k">RECORD CAUGHT</div>
-        <div class="ut" id="u-t"></div>
-        <div class="um" id="u-m"></div>
-        <div class="links" id="u-links"></div>
-      </div>
-    </aside>
-
-    <div id="touchpad" hidden><div class="th">DRAG TO MOVE · HOLD TO FIRE</div></div>
-
-    <section id="how" class="screen scrim" hidden aria-label="How to play">
-      <div class="sheet"><div class="card">
-        <h2><small>HOW TO PLAY</small>Hold the line</h2>
-        <dl class="how-grid">
-          <dt>MOVE</dt><dd>Left and Right, A and D, the left stick, or drag along the bottom of the screen.</dd>
-          <dt>FIRE</dt><dd>Space or Z, the A button, or keep a finger down (it fires on its own).</dd>
-          <dt>RECORDS</dt><dd>Every wave a Record Ship crosses the sky carrying a release from that lane. Shoot it, then catch the falling record with your cannon to unlock the track.</dd>
-          <dt>THE BEAT</dt><dd>The invaders march on the beat. The fewer that are left, the faster the music.</dd>
-          <dt>WAVES</dt><dd>Seven waves, one per lane, then the Mothership. Its hull panels are cover art. Each one you break drops a record.</dd>
-          <dt>LISTEN</dt><dd>Play here opens a release in SoundCloud's own player, in the corner. The game's music steps aside while it plays.</dd>
-          <dt>PAUSE</dt><dd>Esc or P, or Start. M mutes.</dd>
-        </dl>
-        <div class="pu-row" id="how-pu"></div>
-        <div class="menu"><button class="btn primary" type="button" data-act="back">Got it</button></div>
-      </div></div>
-    </section>
-
-    <section id="pause" class="screen scrim" hidden aria-label="Paused">
-      <div class="sheet"><div class="card">
-        <h2><small id="p-wave">WAVE 1</small>Paused</h2>
-        <nav class="menu" id="p-menu">
-          <button class="btn primary" type="button" data-act="resume">Resume<span class="k">ESC</span></button>
-          <button class="btn" type="button" data-act="restart">Restart wave</button>
-          <button class="btn" type="button" data-act="records">Records</button>
-          <button class="btn" type="button" data-act="mute" id="p-mute">Sound: on</button>
-          <button class="btn" type="button" data-act="quit">Quit to title</button>
-        </nav>
-        <p class="contact pause-contact">Contact <b>{contact}</b></p>
-      </div></div>
-    </section>
-
-    <section id="records" class="screen scrim" hidden aria-label="Records">
-      <div class="sheet"><div class="card">
-        <div class="rec-head"><h2><small>THE CATALOG</small>Records</h2><div class="rec-count" id="r-count"></div></div>
-        <div class="rec-list" id="r-list"></div>
-        <div class="rec-foot"><button class="btn primary" type="button" data-act="back">Back<span class="k">ESC</span></button></div>
-      </div></div>
-    </section>
-
-    <section id="results" class="screen scrim" hidden aria-label="Results">
-      <div class="sheet"><div class="card">
-        <h2><small id="res-k">GAME OVER</small><span id="res-t">The wave broke through</span></h2>
-        <div class="res-stats">
-          <div><span>SCORE</span><b id="res-score">0</b></div>
-          <div><span>WAVE</span><b id="res-wave">1</b></div>
-          <div><span>RECORDS FOUND</span><b id="res-rec">0</b></div>
-        </div>
-        <p class="res-none" id="res-none"></p>
-        <div class="res-recs" id="res-recs"></div>
-        <nav class="menu res-btns" id="res-menu"></nav>
-      </div></div>
-    </section>
-
-    <!-- SoundCloud's own player, created only when someone presses Play here. -->
-    <aside class="dock" id="dock" aria-label="Now playing" hidden>
-      <div class="dock-head">
-        <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
-        <a class="dock-title" id="dock-title" href={links.catalog}></a>
-        <button class="dock-close" type="button" id="dock-close" aria-label="Stop the music and close the player">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
-        </button>
-      </div>
-      <div class="dock-frame" id="dock-frame"></div>
-    </aside>
-
-    <!-- Rendered on the server as plain links to the release pages: this is what a crawler
-         reads, and what the page becomes when the game cannot run (shell.js shows it). -->
-    <section class="catalog-list" id="tracks" aria-labelledby="tracks-h" inert>
-      <h2 id="tracks-h">Track list</h2>
-      <p class="sub" id="tracks-sub">Every release, newest first in each lane.</p>
-      <div class="tl-lanes" id="tl-lanes">
-        {lanes.map((lane) => (
-          <section class="tl-lane" data-lane={lane.bus} data-color={lane.color}>
-            <h3><b>{lane.bus}</b>{lane.name}<span>{lane.tracks.length}</span></h3>
-            <ol>
-              {lane.tracks.map((r) => (
-                <li>
-                  <a class="tl-row" href={r.page} data-slug={r.slug}>
-                    <i></i><b>{r.title}</b><span>{dateShort(r.date)}, {year(r.date)} · {fmtDuration(r.ms)}</span>
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </section>
-        ))}
-      </div>
-      <p class="tl-foot" hidden>
-        <a href={links.catalog}>The catalog, with cover art</a>
-        <a href={links.story}>The story</a>
+  <section class="hero" aria-labelledby="hero-h">
+    <img class="hero-art" src={heroArt} alt="" fetchpriority="high" />
+    <div class="hero-shade" aria-hidden="true"></div>
+    <div class="wrap hero-copy">
+      <p class="eyebrow">New release · {dateShort(newest.data.datePublished)}, {year(newest.data.datePublished)} · {newest.data.lane}</p>
+      <h2 class:list={['hero-title', titleSize]} id="hero-h">{newest.data.title}</h2>
+      <p class="hero-line">
+        Written and produced by Chris Gwim. {lane && `${lane.blurb}. `}<span class="tabular">{fmtDuration(newest.data.durationMs)}</span>.
       </p>
-      <p class="contact">Contact <b>{contact}</b></p>
-    </section>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href={`${base}music/${newest.id}/`}>Listen now</a>
+        <a class="btn hero-follow" href={profile('Spotify')} target="_blank" rel="noopener">
+          Follow on Spotify
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"></path></svg>
+        </a>
+      </div>
+    </div>
+  </section>
 
-    <script id="data" type="application/json" set:html={safeJson(data)} />
-  </body>
-</html>
+  <nav class="listen" aria-label="Streaming platforms">
+    <div class="wrap listen-row">
+      <span class="listen-label">Listen on</span>
+      {PLATFORMS.map((p) => (
+        <a href={p.url} target="_blank" rel="noopener">{p.name}</a>
+      ))}
+    </div>
+  </nav>
+
+  <section class="wrap section" aria-labelledby="showing-h">
+    <div class="section-head">
+      <h2 class="section-title" id="showing-h">Now showing</h2>
+      <p class="section-aside showing-links">
+        <a href={`${base}music/`}>The whole catalog, {releases.length} releases</a>
+        <a href={`${base}music/#series`}>The classical series</a>
+      </p>
+    </div>
+    <PosterGrid releases={earlier.slice(0, 4)} variant="feature" showDate />
+  </section>
+
+  <section class="wrap promos" aria-labelledby="also-h">
+    <h2 class="promos-label" id="also-h">Also from Chris Gwim</h2>
+    <ul class="promo-grid">
+      <li>
+        <a class="promo" href={`${base}play/`}>
+          <span class="promo-mark">Wave<br /><span class="hot">Invasion</span></span>
+          <span class="promo-copy">The catalog as an arcade shooter. Play it in your browser.</span>
+        </a>
+      </li>
+      <li>
+        <a class="promo promo-light" href={LUNTHRA_URL} target="_blank" rel="noopener">
+          <span class="promo-mark">Lunthra<br />apparel</span>
+          <span class="promo-copy">Science and sci-fi apparel, printed to&nbsp;order&nbsp;↗</span>
+        </a>
+      </li>
+      <li>
+        <a class="promo" href={REFERRAL_URL} target="_blank" rel="noopener">
+          <span class="promo-mark">Artist<br />Pro</span>
+          <span class="promo-copy">For producers: a free month of SoundCloud Artist&nbsp;Pro&nbsp;↗</span>
+        </a>
+      </li>
+    </ul>
+  </section>
+
+  <section class="wrap about" aria-labelledby="about-h">
+    <img class="about-photo" src={`${base}artist-portrait.jpg`} alt="Chris Gwim" width="960" height="1200" loading="lazy" />
+    <div class="about-copy">
+      <p class="eyebrow">Written and produced by</p>
+      <h2 class="about-title" id="about-h">Chris<br />Gwim</h2>
+      <p>
+        Chris Gwim is a producer. The instrument is Ableton Live; the output is whatever the
+        idea needs. {releases.length} releases since {monthYear(first.data.datePublished)}.
+      </p>
+      <p>No live dates. The work is the catalog. Press play.</p>
+      <a class="about-link" href={`${base}story/`}>Read the story</a>
+    </div>
+    <div class="follow" id="follow">
+      <h2 class="follow-label">Follow</h2>
+      <ul>
+        {follow.map((f) => (
+          <li>
+            <a href={f.url} target="_blank" rel="noopener">{f.name}<span>{f.note}</span></a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+</Base>
+
+<style>
+  /* The premiere: the newest release's art edge to edge, its title as large as it fits. */
+  .hero {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    min-height: clamp(520px, 50vw, 720px);
+    overflow: hidden;
+    background: #000;
+  }
+  .hero-art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 60%;
+  }
+  /* Dark on the left where the words are, clear on the right where the art is,
+     and a fade into the page at the bottom edge. */
+  .hero-shade {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(8, 9, 11, 0) 72%, var(--bg) 100%),
+      linear-gradient(90deg, rgba(8, 9, 11, 0.94) 0%, rgba(8, 9, 11, 0.62) 46%, rgba(8, 9, 11, 0.08) 100%);
+  }
+  .hero-copy {
+    position: relative;
+    width: 100%;
+    padding-block: 96px 56px;
+  }
+  .hero-title {
+    margin: 0 0 24px;
+    font-family: var(--display);
+    font-weight: 900;
+    line-height: 0.84;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+  .hero-title.xl { font-size: clamp(76px, 15vw, 228px); }
+  .hero-title.lg { font-size: clamp(60px, 11vw, 168px); }
+  .hero-title.md { font-size: clamp(52px, 8vw, 128px); }
+  .hero-line {
+    margin: 0 0 32px;
+    max-width: 46ch;
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--text-soft);
+  }
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 16px;
+  }
+  .hero-follow { border-color: var(--text); }
+  .hero-follow:hover,
+  .hero-follow:focus-visible { background: var(--text); color: var(--bg); }
+
+  /* Every place the music can be heard, one line under the premiere. */
+  .listen { border-bottom: 1px solid var(--line); }
+  .listen-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 40px;
+    padding-block: 12px;
+  }
+  .listen-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .listen a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  .listen a:hover,
+  .listen a:focus-visible { color: var(--accent); }
+
+  .showing-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 24px;
+  }
+
+  /* House promos: the game, the sibling brand, the referral. */
+  .promos { padding-block: 40px; }
+  .promos-label {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .promo-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 24px;
+  }
+  .promo {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 20px;
+    height: 100%;
+    min-height: 220px;
+    padding: 28px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    text-decoration: none;
+  }
+  .promo:hover,
+  .promo:focus-visible { border-color: var(--text); }
+  .promo-mark {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 56px;
+    line-height: 0.86;
+    text-transform: uppercase;
+  }
+  .hot { color: var(--accent); }
+  .promo-copy {
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-soft);
+  }
+  .promo-light {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+  }
+  .promo-light .promo-copy { color: var(--bg); }
+  .promo-light:hover,
+  .promo-light:focus-visible { background: #fff; border-color: #fff; }
+
+  /* Who it is, and where to follow. */
+  .about {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 48px;
+    align-items: start;
+    padding-block: 80px;
+  }
+  .about-photo {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    background: var(--panel);
+  }
+  .about-title {
+    margin: 0 0 24px;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(64px, 7vw, 104px);
+    line-height: 0.84;
+    text-transform: uppercase;
+  }
+  .about-copy p:not(.eyebrow) {
+    margin: 0 0 16px;
+    font-size: 18px;
+    line-height: 1.65;
+    color: var(--text-soft);
+  }
+  .about-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .about-link:hover,
+  .about-link:focus-visible { color: var(--accent); }
+  .follow { scroll-margin-top: 24px; }
+  .follow-label {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .follow ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line-strong);
+  }
+  .follow a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 60px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 28px;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  .follow a span {
+    font-family: var(--body);
+    font-size: 13px;
+    font-weight: 400;
+    text-transform: none;
+    color: var(--text-dim);
+  }
+  .follow a:hover,
+  .follow a:focus-visible { color: var(--accent); }
+</style>

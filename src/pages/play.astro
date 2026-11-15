@@ -1,0 +1,251 @@
+---
+// /play/ is Wave Invasion: the catalog as an arcade invader shooter. It was the
+// home page from 2026-10-07 until the hub home page replaced it (2026-11-15).
+// The game lives in src/game (see its README); this page is its markup, with
+// everything a crawler or a visitor without WebGL needs rendered here on the
+// server: the name, the way home, to the catalog and to the story, every
+// release as a plain link, and the contact address in plain view.
+import '@fontsource/bungee';
+import '@fontsource/bungee-inline';
+import '@fontsource/chakra-petch/500.css';
+import '@fontsource/chakra-petch/600.css';
+import '@fontsource/chakra-petch/700.css';
+import '../styles/invasion.css';
+import Head from '../components/Head.astro';
+import { fmtDuration, dateShort } from '../lib/releases';
+import { gameData } from '../lib/game-data';
+import { safeJson } from '../lib/site';
+
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : import.meta.env.BASE_URL + '/';
+const data = await gameData(base);
+const { releases, links, contact } = data;
+const lanes = data.lanes
+  .map((lane) => ({ ...lane, tracks: releases.filter((r) => r.lane === lane.name) }))
+  .filter((lane) => lane.tracks.length > 0);
+const newest = releases[0];
+const year = (iso: string) => iso.slice(0, 4);
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head
+      title="Wave Invasion — Chris Gwim"
+      description={`Wave Invasion: the Chris Gwim catalog as an arcade shooter. ${releases.length} releases across ${lanes.length} lanes. Shoot down the Record Ships and catch the records they drop to unlock the tracks. Now premiering: ${newest.title}.`}
+      viewport="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    {/* Two scripts, in this order. The first is the page without the game; it is small enough
+        that Astro writes it into the page, so it runs even if the second never arrives. */}
+    <script>
+      import '../game/shell.js';
+    </script>
+    <script>
+      import invasion from '../game/invasion.js';
+
+      document.documentElement.dataset.game = 'on';      // shell.js looks for this mark
+
+      invasion().catch((err) => {
+        console.error(err);
+        document.dispatchEvent(new CustomEvent('game:failed', { detail: 'Wave Invasion could not start in this browser, so here is every release.' }));
+      });
+    </script>
+  </head>
+  {/* .booting is in the markup, not added by script, so the cover below is up from the very
+      first paint. The game removes the class when the field is ready to be seen. */}
+  <body class="booting">
+    <div class="boot" role="status" aria-label="Loading Wave Invasion">
+      <div class="track"><i id="boot-bar"></i></div>
+      {/* Shown by CSS alone after a few seconds, so it is there even when the script is what is slow. */}
+      <p class="boot-late"><span>Loading Wave Invasion</span><a href={links.catalog}>Taking a while? Browse the catalog instead.</a></p>
+    </div>
+
+    <main>
+      {/* Fixed behind everything; it lives in main so that it sits inside a landmark. */}
+      <canvas id="scene" tabindex="-1" aria-label="Wave Invasion, an arcade shooter. Shoot down the Record Ships and catch the records they drop to unlock Chris Gwim's releases. The Records screen lists every release without playing."></canvas>
+      <div id="atmo" class="layer" aria-hidden="true"></div>
+      <div id="scan" class="layer" aria-hidden="true"></div>
+      <div id="flash" class="layer" aria-hidden="true"></div>
+      <div id="popups" aria-hidden="true"></div>
+
+      <section id="title" class="screen" aria-labelledby="title-h">
+        <div class="t-wrap">
+          <div class="t-main">
+            <div class="logo">
+              <h1 class="logo-by" id="title-h">Chris Gwim</h1>
+              <p class="logo-game" aria-label="Wave Invasion"><span aria-hidden="true">WAVE</span><span class="l2" aria-hidden="true">INVASION</span></p>
+            </div>
+            <div class="bars" id="t-bars" aria-hidden="true"></div>
+            <noscript>
+              <p class="noscript">Wave Invasion is a game and needs JavaScript. Every release is also in <a href={links.catalog}>the catalog</a>.</p>
+            </noscript>
+            <div class="t-menu-slot">
+              <nav class="menu" id="t-menu" aria-label="Main menu" hidden>
+                <button class="btn primary" type="button" data-act="play">Play<span class="k">ENTER</span></button>
+                <button class="btn" type="button" data-act="records">Records<span class="k">R</span></button>
+                <button class="btn" type="button" data-act="how">How to play</button>
+                <button class="btn" type="button" data-act="mute" id="t-mute">Sound: on<span class="k">M</span></button>
+              </nav>
+            </div>
+            <div class="press" id="t-press" hidden>PRESS START</div>
+          </div>
+          <div class="t-side" id="t-side" hidden>
+            <div class="panel sc-panel">
+              <h2>SCORE ADVANCE TABLE</h2>
+              <div class="sct" id="t-score"></div>
+            </div>
+            <div class="panel prem" id="t-prem"></div>
+          </div>
+          <div class="t-foot">
+            <p class="t-stats" id="t-stats" hidden><span>HI-SCORE <b id="t-hi">0</b></span><span>RECORDS <b id="t-rec">0/0</b></span><span id="t-lanes"></span></p>
+            <div class="t-site">
+              <nav aria-label="Browse">
+                <span>Not here to play?</span>
+                <a href={links.home}>Back to the home page</a>
+                <a href={links.catalog}>Browse the catalog</a>
+                <a href={links.story}>Read the story</a>
+                <a href={links.lunthra} target="_blank" rel="noopener">Lunthra apparel ↗</a>
+                <a href={links.referral} target="_blank" rel="noopener">A free month of SoundCloud Artist Pro ↗</a>
+              </nav>
+              <p class="contact">Contact <b>{contact}</b> · © 2026 Chris Gwim</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="site-nav" aria-label="Site">
+      <a href={links.home}>Home</a>
+      <a href={links.catalog}>Catalog</a>
+      <a href={links.story}>Story</a>
+    </nav>
+
+    <header id="hud" hidden>
+      <div class="hud-l">
+        <div class="stat"><span class="lbl">SCORE</span><b id="h-score">0</b></div>
+        <div class="stat hi"><span class="lbl">HI-SCORE</span><b id="h-hi">0</b></div>
+      </div>
+      <div class="hud-c">
+        <div class="wave-chip" id="h-wave"><span class="wn" id="h-wave-n">W1</span><span class="wl" id="h-wave-l">CLASSICAL FUSION</span></div>
+        <div id="h-combo">COMBO x1</div>
+      </div>
+      <div class="hud-r">
+        <div class="stat recstat"><span class="lbl">RECORDS</span><b><i class="vinyl"></i><span id="h-rec">0/0</span></b></div>
+        <div id="h-lives" aria-label="Lives"></div>
+        <button id="b-pause" type="button" aria-label="Pause"></button>
+      </div>
+    </header>
+    <div id="h-power" hidden><div class="pn" id="h-power-n"></div><div class="pb"><i id="h-power-b"></i></div></div>
+    <div id="h-boss" hidden><div class="bn" id="h-boss-n">MOTHERSHIP</div><div class="bb"><i id="h-boss-b"></i></div></div>
+    <div id="banner" hidden><div class="bs" id="bn-s"></div><div class="bt" id="bn-t"></div><div class="bb2" id="bn-b"></div><div class="bx" id="bn-x"></div></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <aside id="unlock" hidden aria-live="polite">
+      <img id="u-img" alt="" width="112" height="112" />
+      <div>
+        <div class="uk" id="u-k">RECORD CAUGHT</div>
+        <div class="ut" id="u-t"></div>
+        <div class="um" id="u-m"></div>
+        <div class="links" id="u-links"></div>
+      </div>
+    </aside>
+
+    <div id="touchpad" hidden><div class="th">DRAG TO MOVE · HOLD TO FIRE</div></div>
+
+    <section id="how" class="screen scrim" hidden aria-label="How to play">
+      <div class="sheet"><div class="card">
+        <h2><small>HOW TO PLAY</small>Hold the line</h2>
+        <dl class="how-grid">
+          <dt>MOVE</dt><dd>Left and Right, A and D, the left stick, or drag along the bottom of the screen.</dd>
+          <dt>FIRE</dt><dd>Space or Z, the A button, or keep a finger down (it fires on its own).</dd>
+          <dt>RECORDS</dt><dd>Every wave a Record Ship crosses the sky carrying a release from that lane. Shoot it, then catch the falling record with your cannon to unlock the track.</dd>
+          <dt>THE BEAT</dt><dd>The invaders march on the beat. The fewer that are left, the faster the music.</dd>
+          <dt>WAVES</dt><dd>Seven waves, one per lane, then the Mothership. Its hull panels are cover art. Each one you break drops a record.</dd>
+          <dt>LISTEN</dt><dd>Play here opens a release in SoundCloud's own player, in the corner. The game's music steps aside while it plays.</dd>
+          <dt>PAUSE</dt><dd>Esc or P, or Start. M mutes.</dd>
+        </dl>
+        <div class="pu-row" id="how-pu"></div>
+        <div class="menu"><button class="btn primary" type="button" data-act="back">Got it</button></div>
+      </div></div>
+    </section>
+
+    <section id="pause" class="screen scrim" hidden aria-label="Paused">
+      <div class="sheet"><div class="card">
+        <h2><small id="p-wave">WAVE 1</small>Paused</h2>
+        <nav class="menu" id="p-menu">
+          <button class="btn primary" type="button" data-act="resume">Resume<span class="k">ESC</span></button>
+          <button class="btn" type="button" data-act="restart">Restart wave</button>
+          <button class="btn" type="button" data-act="records">Records</button>
+          <button class="btn" type="button" data-act="mute" id="p-mute">Sound: on</button>
+          <button class="btn" type="button" data-act="quit">Quit to title</button>
+        </nav>
+        <p class="contact pause-contact">Contact <b>{contact}</b></p>
+      </div></div>
+    </section>
+
+    <section id="records" class="screen scrim" hidden aria-label="Records">
+      <div class="sheet"><div class="card">
+        <div class="rec-head"><h2><small>THE CATALOG</small>Records</h2><div class="rec-count" id="r-count"></div></div>
+        <div class="rec-list" id="r-list"></div>
+        <div class="rec-foot"><button class="btn primary" type="button" data-act="back">Back<span class="k">ESC</span></button></div>
+      </div></div>
+    </section>
+
+    <section id="results" class="screen scrim" hidden aria-label="Results">
+      <div class="sheet"><div class="card">
+        <h2><small id="res-k">GAME OVER</small><span id="res-t">The wave broke through</span></h2>
+        <div class="res-stats">
+          <div><span>SCORE</span><b id="res-score">0</b></div>
+          <div><span>WAVE</span><b id="res-wave">1</b></div>
+          <div><span>RECORDS FOUND</span><b id="res-rec">0</b></div>
+        </div>
+        <p class="res-none" id="res-none"></p>
+        <div class="res-recs" id="res-recs"></div>
+        <nav class="menu res-btns" id="res-menu"></nav>
+      </div></div>
+    </section>
+
+    <!-- SoundCloud's own player, created only when someone presses Play here. -->
+    <aside class="dock" id="dock" aria-label="Now playing" hidden>
+      <div class="dock-head">
+        <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+        <a class="dock-title" id="dock-title" href={links.catalog}></a>
+        <button class="dock-close" type="button" id="dock-close" aria-label="Stop the music and close the player">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+        </button>
+      </div>
+      <div class="dock-frame" id="dock-frame"></div>
+    </aside>
+
+    <!-- Rendered on the server as plain links to the release pages: this is what a crawler
+         reads, and what the page becomes when the game cannot run (shell.js shows it). -->
+    <section class="catalog-list" id="tracks" aria-labelledby="tracks-h" inert>
+      <h2 id="tracks-h">Track list</h2>
+      <p class="sub" id="tracks-sub">Every release, newest first in each lane.</p>
+      <div class="tl-lanes" id="tl-lanes">
+        {lanes.map((lane) => (
+          <section class="tl-lane" data-lane={lane.bus} data-color={lane.color}>
+            <h3><b>{lane.bus}</b>{lane.name}<span>{lane.tracks.length}</span></h3>
+            <ol>
+              {lane.tracks.map((r) => (
+                <li>
+                  <a class="tl-row" href={r.page} data-slug={r.slug}>
+                    <i></i><b>{r.title}</b><span>{dateShort(r.date)}, {year(r.date)} · {fmtDuration(r.ms)}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+      <p class="tl-foot" hidden>
+        <a href={links.home}>The home page</a>
+        <a href={links.catalog}>The catalog, with cover art</a>
+        <a href={links.story}>The story</a>
+      </p>
+      <p class="contact">Contact <b>{contact}</b></p>
+    </section>
+
+    <script id="data" type="application/json" set:html={safeJson(data)} />
+  </body>
+</html>

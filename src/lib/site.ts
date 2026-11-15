@@ -8,7 +8,11 @@ export const CONTACT_EMAIL = 'chrisgwim@chrisgwim.com';
 // The sibling brand, linked from every page. No UTM parameters.
 export const LUNTHRA_URL = 'https://lunthra.com';
 
-// SoundCloud Artist Pro referral, offered on the home page only.
+// The artist's own YouTube channel (videos and Shorts). The YouTube entry in
+// PLATFORMS is the auto-generated Topic channel, where the full tracks stream.
+export const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@chrisgwim';
+
+// SoundCloud Artist Pro referral, offered on the home page and in the game.
 export const REFERRAL_URL = 'https://invite.soundcloud.com/magnusnova!8bf953f927!a';
 
 /**

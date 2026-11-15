@@ -1,20 +1,22 @@
 ---
 interface Props {
-  current?: 'music' | 'story';
+  current?: 'home' | 'music' | 'story';
 }
 const { current } = Astro.props;
 const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : import.meta.env.BASE_URL + '/';
+// Play is Wave Invasion, a page of its own that does not use this header.
+// Follow is the list of profiles on the home page.
 const nav = [
-  { key: 'home', label: 'Wave Invasion', href: base },
-  { key: 'series', label: 'Classical series', href: `${base}music/#series` },
-  { key: 'music', label: 'Catalog', href: `${base}music/` },
+  { key: 'music', label: 'Music', href: `${base}music/` },
   { key: 'story', label: 'Story', href: `${base}story/` },
+  { key: 'play', label: 'Play', href: `${base}play/` },
+  { key: 'follow', label: 'Follow', href: `${base}#follow` },
 ];
 ---
 <header class="header">
-  <a class="wordmark" href={base}>Chris Gwim</a>
+  <a class="wordmark" href={base} aria-current={current === 'home' ? 'page' : undefined}>Chris Gwim</a>
   <nav class="nav" aria-label="Site">
     {nav.map((item) => (
       <a href={item.href} aria-current={current === item.key ? 'page' : undefined}>{item.label}</a>
