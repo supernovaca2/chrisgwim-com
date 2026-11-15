@@ -1,4 +1,7 @@
-# Wave Invasion (the home page)
+# Wave Invasion (/play/)
+
+The game was the home page from 2026-10-07 to 2026-11-15, when the hub home
+page replaced it; it has been at `/play/` since.
 
 The catalog as an arcade invader shooter. Seven waves of voxel invaders, one
 per lane (bus A is wave 1), march toward Earth on the beat of a synthesized
@@ -44,7 +47,7 @@ page's script sets `<html data-game>` the moment the game's file runs, and
 `game:failed` is dispatched on `document` (the sentence to show is
 `event.detail`) when it cannot run.
 
-The markup is in `src/pages/index.astro`, the styles in
+The markup is in `src/pages/play.astro`, the styles in
 `src/styles/invasion.css`, and the catalog data the game reads is built by
 `src/lib/game-data.ts` and inlined in the page as JSON.
 

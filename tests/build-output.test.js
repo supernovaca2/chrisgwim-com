@@ -29,8 +29,7 @@ const htmlPages = () => walk(distRoot).filter((f) => f.endsWith('.html'));
 
 // All the CSS the site ships, whether Astro emits an external stylesheet or
 // inlines it into a page (it inlines any sheet under ~4KB). Every page is read,
-// not just the home page: the home page is Wave Invasion and shares no styles
-// with the others.
+// not just the home page: Wave Invasion (/play/) shares no styles with the others.
 const shippedStyles = () =>
   textFiles().filter((f) => f.endsWith('.css')).map((f) => readFileSync(f, 'utf8')).join('\n') +
   htmlPages().map((f) => readFileSync(f, 'utf8')).join('\n');
@@ -42,12 +41,19 @@ const newestFirst = () =>
   releases().sort((a, b) => b.datePublished.localeCompare(a.datePublished) || a.title.localeCompare(b.title));
 
 const home = () => readFileSync(dist('index.html'), 'utf8');
-// The catalog as the game receives it: one JSON block inlined in the home page.
+// Wave Invasion, the game. It was the home page until 2026-11-15 and now lives at /play/.
+const play = () => readFileSync(dist('play/index.html'), 'utf8');
+// The catalog as the game receives it: one JSON block inlined in its page.
 const gameData = () => {
-  const block = home().match(/<script id="data" type="application\/json">([\s\S]*?)<\/script>/);
-  assert.ok(block, 'the home page should inline the catalog for the game');
+  const block = play().match(/<script id="data" type="application\/json">([\s\S]*?)<\/script>/);
+  assert.ok(block, 'the game page should inline the catalog for the game');
   return JSON.parse(block[1]);
 };
+// The profiles the site links to, read from the one place they are written down.
+const platforms = () =>
+  [...readFileSync(fileURLToPath(new URL('../src/lib/releases.ts', import.meta.url)), 'utf8')
+    .match(/export const PLATFORMS = \[([\s\S]*?)\] as const/)[1]
+    .matchAll(/name: '([^']+)', url: '([^']+)'/g)].map(([, name, url]) => ({ name, url }));
 
 test('the homepage is generated', () => {
   assert.ok(existsSync(dist('index.html')), 'dist/index.html should exist');
@@ -99,17 +105,17 @@ test('every face is self-hosted and reaches the build', () => {
   assert.doesNotMatch(css, /url\(\s*['"]?data:/, 'an asset was inlined as a data: URL, which the policy refuses');
 });
 
-test('the classical series lists every composer release and the nav can reach it', () => {
+test('the classical series lists every composer release and the home page can reach it', () => {
   const page = readFileSync(dist('music/index.html'), 'utf8');
   const composers = ['Bach', 'Beethoven', 'Mozart', 'Tchaikovsky', 'Vivaldi'];
   const inSeries = releases().filter((r) => composers.some((c) => r.title.startsWith(`${c} `)));
   assert.ok(inSeries.length >= 2, 'expected at least two composer releases');
   assert.match(page, /id="series"/, 'the series sits on the catalog page');
-  assert.match(page, /href="\/music\/#series"/, 'the header links to it');
+  assert.match(home(), /href="\/music\/#series"/, 'the home page links to it');
   for (const r of inSeries) assert.match(page, new RegExp(`href="/music/${r.slug}/"[^>]*>\\s*<img[^>]*${r.slug}`), `${r.slug} missing from the series`);
 });
 
-// The sibling brand sits on every page; the SoundCloud referral on the home page.
+// The sibling brand sits on every page; the SoundCloud referral on the home page and in the game.
 test('the Lunthra cross-link is on every page and links out cleanly', () => {
   for (const page of htmlPages()) {
     const html = readFileSync(page, 'utf8');
@@ -117,25 +123,64 @@ test('the Lunthra cross-link is on every page and links out cleanly', () => {
     assert.doesNotMatch(html, /lunthra\.com[^"]*utm_/, 'UTM parameters are not allowed on the Lunthra link');
   }
   assert.match(home(), /invite\.soundcloud\.com/, 'the referral sits on the home page');
+  assert.match(play(), /invite\.soundcloud\.com/, 'and on the game\'s title screen');
 });
 
-// --- The home page is a game (Overworld 2026-10-05, Wave Invasion 2026-10-07) ---
-// What must stay true of it is that it is still a page: the whole catalog is
-// in its markup as plain links, and the game is handed exactly the catalog the
-// rest of the site is built from.
+// --- The home page is the hub (2026-11-15) --------------------------------------
+// It follows the catalog by itself: the newest release is the premiere, the next
+// four are under it, and every profile is one click away. The game is a link.
 
-test('the home page is Wave Invasion, and still carries the whole catalog as plain links', () => {
+test('the home page premieres the newest release and links every place the music lives', () => {
   const html = home();
+  const [newest, ...earlier] = newestFirst();
+  assert.match(html, /<h1[^>]*>Chris Gwim, producer<\/h1>/, 'the artist name is the page heading');
+  assert.match(html, /"@type":"MusicGroup"/, 'expected MusicGroup JSON-LD');
+  assert.doesNotMatch(html, /<canvas/, 'the game is not on the home page');
+  const hero = html.match(/<section class="hero[\s\S]*?<\/section>/);
+  assert.ok(hero, 'expected the premiere at the top of the page');
+  assert.match(hero[0], new RegExp(`href="/music/${newest.slug}/"`), 'the premiere links to the newest release');
+  assert.match(hero[0], /<img[^>]*src="\/covers\/(?:hd\/)?[^"]+\.jpg"/, 'the premiere shows cover art, at its largest size');
+  for (const r of earlier.slice(0, 4)) assert.match(html, new RegExp(`href="/music/${r.slug}/"`), `${r.slug} should be under the premiere`);
+  const listed = platforms();
+  assert.ok(listed.length >= 5, 'expected the streaming profiles in src/lib/releases.ts');
+  for (const p of listed) assert.ok(html.includes(`href="${p.url}"`), `${p.name} is not linked from the home page`);
+  assert.match(html, /href="https:\/\/www\.youtube\.com\/@chrisgwim"/, 'the artist channel on YouTube');
+  assert.match(html, /id="follow"/, 'the header\'s Follow link needs its target');
+  assert.match(html, /href="\/play\/"/, 'the way to the game');
+  assert.match(html, /href="\/music\/"/, 'the way to the catalog');
+  assert.match(html, /href="\/story\/"/, 'and to the story');
+  assert.match(html, /<img[^>]*src="\/artist-portrait\.jpg"[^>]*alt="Chris Gwim"/, 'the portrait');
+});
+
+test('every page with the site header can reach the home page, the game and the profiles', () => {
+  for (const file of ['index.html', 'music/index.html', 'story/index.html', '404.html']) {
+    const html = readFileSync(dist(file), 'utf8');
+    const header = html.match(/<header class="header[\s\S]*?<\/header>/);
+    assert.ok(header, `${file}: expected the site header`);
+    for (const href of ['/', '/music/', '/story/', '/play/', '/#follow']) assert.ok(header[0].includes(`href="${href}"`), `${file}: header should link ${href}`);
+  }
+});
+
+// --- Wave Invasion (/play/) -------------------------------------------------------
+// The game was the home page (Overworld 2026-10-05, Wave Invasion 2026-10-07) and has
+// been a page of its own since 2026-11-15. What must stay true of it is that it is
+// still a page: the whole catalog is in its markup as plain links, and the game is
+// handed exactly the catalog the rest of the site is built from.
+
+test('Wave Invasion is at /play/, and still carries the whole catalog as plain links', () => {
+  const html = play();
   assert.match(html, /<canvas id="scene"/, 'expected the game canvas');
   assert.match(html, /aria-label="Wave Invasion"/, 'expected the game named on its title screen');
   assert.match(html, /<h1[^>]*>Chris Gwim<\/h1>/, 'the artist name is the page heading, in the markup');
   assert.match(html, /"@type":"MusicGroup"/, 'expected MusicGroup JSON-LD');
   assert.match(html, /<noscript>/, 'visitors without JavaScript are told where the catalog is');
   for (const r of releases()) {
-    assert.match(html, new RegExp(`<a class="tl-row" href="/music/${r.slug}/"`), `${r.slug} is not linked from the home page`);
+    assert.match(html, new RegExp(`<a class="tl-row" href="/music/${r.slug}/"`), `${r.slug} is not linked from the game page`);
   }
   assert.match(html, /href="\/music\/"/, 'the way to the catalog does not depend on the game');
   assert.match(html, /href="\/story\/"/, 'nor does the way to the story');
+  assert.match(html.match(/<nav class="site-nav"[\s\S]*?<\/nav>/)[0], /href="\/"/, 'nor the way back to the home page');
+  assert.match(html, /<link rel="canonical" href="https:\/\/chrisgwim\.com\/play\/"/, 'the game has its own address');
 });
 
 test('the game is handed the same catalog the pages are built from', () => {
@@ -248,8 +293,8 @@ test('the contact email is visible text on every page and in the JSON-LD', () =>
   assert.deepEqual(hidden, [], `email not visible as text in: ${hidden.join(', ')}`);
 
   assert.match(home(), /"email":"chrisgwim@chrisgwim\.com"/, 'MusicGroup JSON-LD should carry the email');
-  // On the home page the address must be on the title screen itself, in view before anyone presses Start.
-  assert.match(home().match(/<section id="title"[\s\S]*?<\/section>/)[0], new RegExp(email), 'the title screen shows the address');
+  // In the game the address must be on the title screen itself, in view before anyone presses Start.
+  assert.match(play().match(/<section id="title"[\s\S]*?<\/section>/)[0], new RegExp(email), 'the title screen shows the address');
 });
 
 // Grid columns narrow on phones; without these the width/height attributes
@@ -370,32 +415,32 @@ test('the production build carries no debug handle', () => {
 });
 
 // --- Loading and controls (2026-10-05) -----------------------------------------
-// The home page takes a moment to build a world. Until it has, the visitor sees a
+// The game takes a moment to build a world. Until it has, the visitor sees a
 // cover, never the half-made page behind it (which read as "the old site" for a
 // moment on every visit). And if the game cannot arrive at all, the page becomes
 // its track list. Neither may depend on the game's own script having loaded.
 
-// Everything that styles the home page: its linked stylesheet, and the small sheets Astro
+// Everything that styles the game page: its linked stylesheet, and the small sheets Astro
 // writes into the page (the display and body @font-face rules end up there).
-const homeCss = () => {
-  const sheets = [...home().matchAll(/<link[^>]*rel="stylesheet"[^>]*href="(\/_astro\/[^"]+\.css)"/g)].map((m) => readFileSync(dist(m[1].replace(/^\//, '')), 'utf8'));
-  assert.ok(sheets.length >= 1, 'expected the home page to link its stylesheet');
-  const inline = [...home().matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
+const gameCss = () => {
+  const sheets = [...play().matchAll(/<link[^>]*rel="stylesheet"[^>]*href="(\/_astro\/[^"]+\.css)"/g)].map((m) => readFileSync(dist(m[1].replace(/^\//, '')), 'utf8'));
+  assert.ok(sheets.length >= 1, 'expected the game page to link its stylesheet');
+  const inline = [...play().matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
   return [...sheets, ...inline].join('\n');
 };
 
 test('the loading cover is up from the first paint and never needs script to come down', () => {
-  const html = home();
+  const html = play();
   assert.match(html, /<body class="booting">\s*<div class="boot"/, 'the cover and the class that raises it must be in the markup, first thing in the body');
   const cover = html.match(/<div class="boot"[\s\S]*?<\/p>\s*<\/div>/);
   assert.ok(cover, 'expected the cover to carry its late help line');
   assert.match(cover[0], /href="\/music\/"/, 'a slow load must be offered the catalog from the cover itself');
-  const css = homeCss();
+  const css = gameCss();
   assert.match(css, /\.booting \.boot\{[^}]*animation:[^}]*boot-giveup/, 'the cover must lift by itself as a last resort');
   assert.match(css, /\.booting \.boot-late\{[^}]*animation:/, 'the help line must appear by CSS alone');
   assert.match(css, /@media \(scripting:\s*none\)\{[^}]*\.boot/, 'with scripting off there must be no cover');
   // The stylesheet has to be a blocking link in the head, or the first paint is the bare page.
-  assert.match(html.slice(0, html.indexOf('</head>')), /<link[^>]*rel="stylesheet"/, 'the home stylesheet must be linked in the head');
+  assert.match(html.slice(0, html.indexOf('</head>')), /<link[^>]*rel="stylesheet"/, 'the game stylesheet must be linked in the head');
 });
 
 // Measured 2026-10-05 in WebKit: a preloaded font is, more often than not, downloaded a second
@@ -408,10 +453,10 @@ test('no font is preloaded', () => {
 });
 
 test('the page without the game is written into the page, ahead of the game', () => {
-  const html = home();
+  const html = play();
   const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].map((m) => ({ attrs: m[1], body: m[2], at: m.index }));
   const shell = scripts.find((s) => !/\ssrc=/.test(s.attrs) && /game:failed/.test(s.body));
-  assert.ok(shell, 'src/game/shell.js should be inlined into the home page (it must import nothing and stay small)');
+  assert.ok(shell, 'src/game/shell.js should be inlined into the game page (it must import nothing and stay small)');
   assert.match(shell.attrs, /type="module"/);
   assert.doesNotMatch(shell.body, /\bimport\b/, 'the shell must not depend on another file');
   assert.match(shell.body, /DOMContentLoaded/, 'the shell must notice a game script that never arrived');
@@ -429,7 +474,7 @@ test('the page without the game is written into the page, ahead of the game', ()
 // takes a touch has to say so. Overworld shipped with Boost and Drift dead on every phone
 // until 2026-10-05 for want of that one property.
 test('the touch controls can be touched, and clear the notch', () => {
-  const css = homeCss();
+  const css = gameCss();
   assert.match(css, /#hud\{[^}]*pointer-events:\s*none/, 'expected the HUD to let touches through');
   for (const [sel, noScroll] of [['#touchpad', true], ['#b-pause', false]]) {
     const rule = css.match(new RegExp(`${sel}\\{[^}]*\\}`));
@@ -437,7 +482,7 @@ test('the touch controls can be touched, and clear the notch', () => {
     assert.match(rule[0], /pointer-events:\s*auto/, `${sel} must take pointer events back`);
     if (noScroll) assert.match(rule[0], /touch-action:\s*none/, `${sel} must not scroll or zoom the page`);
   }
-  assert.match(home(), /<meta name="viewport" content="[^"]*viewport-fit=cover/, 'the game draws under the notch');
+  assert.match(play(), /<meta name="viewport" content="[^"]*viewport-fit=cover/, 'the game draws under the notch');
   for (const side of ['left', 'right', 'top', 'bottom']) assert.match(css, new RegExp(`env\\(safe-area-inset-${side}`), `the interface must respect the ${side} safe area`);
 });
 
@@ -464,20 +509,34 @@ test('what the repository keeps in public/ stays far inside the 1 GB source limi
 });
 
 // Bandwidth is the limit a game could actually reach. What a visit costs is
-// the home page's own code plus the art it draws, so both are held down here.
-test('a visit to the home page stays light', () => {
-  const html = home();
+// the page's own code plus the art it draws, so both are held down here.
+// The code a page loads: its scripts and stylesheets, the chunks they import, and its own markup.
+const codeBytes = (html) => {
   const assets = [...html.matchAll(/(?:src|href)="(\/_astro\/[^"]+\.(?:js|css))"/g)].map((m) => dist(m[1].replace(/^\//, '')));
-  assert.ok(assets.length >= 2, 'expected the home page to load its script and its stylesheet');
-  // Chunks the entry script imports are part of the cost too.
   const seen = new Set(assets);
   for (const file of seen) {
     if (!file.endsWith('.js')) continue;
     for (const [, name] of readFileSync(file, 'utf8').matchAll(/from\s*"\.\/([^"]+\.js)"/g)) seen.add(dist(`_astro/${name}`));
   }
-  const bytes = [...seen].reduce((sum, f) => sum + gzipSync(readFileSync(f)).length, 0) + gzipSync(Buffer.from(html)).length;
-  assert.ok(bytes < 300_000, `home page code is ${(bytes / 1000).toFixed(0)} KB gzipped; the budget is 300 KB`);
+  return { assets, bytes: [...seen].reduce((sum, f) => sum + gzipSync(readFileSync(f)).length, 0) + gzipSync(Buffer.from(html)).length };
+};
+
+test('a visit to the game stays light', () => {
+  const { assets, bytes } = codeBytes(play());
+  assert.ok(assets.length >= 2, 'expected the game page to load its script and its stylesheet');
+  assert.ok(bytes < 300_000, `the game's code is ${(bytes / 1000).toFixed(0)} KB gzipped; the budget is 300 KB`);
   const cards = sizeOf(gameData().releases.map((r) => dist(r.card.replace(/^\//, ''))));
   const perRelease = cards / gameData().releases.length;
   assert.ok(perRelease < 40_000, `cover art for the game averages ${(perRelease / 1000).toFixed(0)} KB a release; the budget is 40 KB`);
+});
+
+// The home page is where a first visit lands, usually on a phone. It must not carry the game.
+test('a visit to the home page is far lighter than the game', () => {
+  const { bytes } = codeBytes(home());
+  assert.ok(bytes < 60_000, `home page code is ${(bytes / 1000).toFixed(0)} KB gzipped; the budget is 60 KB`);
+  const chunks = [...home().matchAll(/src="(\/_astro\/[^"]+\.js)"/g)].map((m) => readFileSync(dist(m[1].replace(/^\//, '')), 'utf8'));
+  assert.ok(!chunks.some((js) => /WebGLRenderer/.test(js)), 'three.js must not load on the home page');
+  for (const file of ['artist-portrait.jpg', 'artist-portrait-2.jpg']) {
+    assert.ok(statSync(dist(file)).size < 250_000, `${file} should stay under 250 KB`);
+  }
 });

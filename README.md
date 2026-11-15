@@ -3,32 +3,39 @@
 Chris Gwim's artist site, chrisgwim.com. An Astro static site, deployed to GitHub Pages via
 Actions on push to `main` (tests gate the deploy).
 
-The home page is **Wave Invasion** (2026-10-07): the catalog as an arcade invader shooter. It
-replaced Overworld, the open world that was the home page from 2026-10-05 (its source is in the
-git history). Behind it are the pages of the **Premiere** design (2026-10-04): the catalog as a
-run of film premieres.
+The home page is the **hub** (2026-11-15): the newest release as a premiere, every streaming
+profile, the last few releases, the house promos, and the artist with the profiles to follow.
+It is part of the **Premiere** design (2026-10-04): the catalog as a run of film premieres.
 Black ground, Big Shoulders Display over Instrument Sans, the cover art carries the color, one
 red accent.
+
+**Wave Invasion** (2026-10-07), the catalog as an arcade invader shooter, was the home page
+until the hub replaced it and now lives at `/play/`. It replaced Overworld, the open world that
+was the home page from 2026-10-05 (its source is in the git history).
 
 ## Pages
 
 | Route | What it is |
 |---|---|
-| `/` | Wave Invasion. Seven waves of voxel invaders, one per lane, march on the beat of synthesized music that speeds up as they fall, then the Mothership, whose hull panels are cover art. Each wave sends Record Ships carrying that lane's releases: shoot one down and catch the record it drops to unlock the track. Records lists the whole catalog with links; Play here opens a release in SoundCloud's own player, docked in the corner. The whole catalog is also in the page as plain links (the track list), which is what a crawler reads and what the page becomes without WebGL or when the game's script cannot load. A cover hides the page until the game is ready to be seen |
+| `/` | The hub. The newest release full width with Listen now and Follow on Spotify, a line of every streaming profile, the four releases before it, three house promos (Wave Invasion, Lunthra, the SoundCloud Artist Pro referral), then the portrait, a short bio and the profiles to follow (`#follow`, the header's Follow link). Everything follows the catalog by itself; nothing is typed per release |
+| `/play/` | Wave Invasion. Seven waves of voxel invaders, one per lane, march on the beat of synthesized music that speeds up as they fall, then the Mothership, whose hull panels are cover art. Each wave sends Record Ships carrying that lane's releases: shoot one down and catch the record it drops to unlock the track. Records lists the whole catalog with links; Play here opens a release in SoundCloud's own player, docked in the corner. The whole catalog is also in the page as plain links (the track list), which is what a crawler reads and what the page becomes without WebGL or when the game's script cannot load. A cover hides the page until the game is ready to be seen |
 | `/music/` | The catalog: every release as a poster, with a lane filter (`#<lane-slug>` deep-links a filter), then the classical series (`#series`) |
 | `/music/<slug>/` | Release page: letterbox, player, notes and details, more from the lane, prev/next, MusicRecording JSON-LD |
 | `/story/` | Bio, the facts, every lane and its tracks, press note |
 
-The home page deep-links too: `/#play` skips the title and `/#records` opens the catalog
-(`/#tracks` still works).
+The game deep-links too: `/play/#play` skips the title and `/play/#records` opens the catalog
+(`/play/#tracks` still works). The old `/#play` and `/#records` links now land on the hub.
 
 Wave Invasion's source, how it is put together and the rules it keeps are in
-[`src/game/README.md`](src/game/README.md). Its markup is `src/pages/index.astro`, its styles
-`src/styles/invasion.css`. The other pages share `src/layouts/Base.astro` and the tokens and
-building blocks in `src/styles/tokens.css`.
+[`src/game/README.md`](src/game/README.md). Its markup is `src/pages/play.astro`, its styles
+`src/styles/invasion.css`. The other pages, the home page included, share
+`src/layouts/Base.astro` and the tokens and building blocks in `src/styles/tokens.css`.
 
-Every page shows the contact address as visible text and links to Lunthra; the home page also
-carries the SoundCloud referral. On the home page all three are on the title screen.
+Every page shows the contact address as visible text and links to Lunthra; the home page and
+the game also carry the SoundCloud referral. In the game all three are on the title screen.
+
+The portraits are `public/artist-portrait.jpg` (home page, share image, structured data) and
+`public/artist-portrait-2.jpg` (story page), both 4:5.
 
 **The classical series** is derived, not tagged: a release joins when its title starts with a
 composer's name in `COMPOSERS` (`src/lib/releases.ts`). Add a name there for a new composer.
@@ -63,9 +70,10 @@ edit sticks.
   | `durationMs` | From the SoundCloud API |
   | `description`, `tags`, `series` | Optional |
 
-  The poster wall, counts, the classical series, sitemap, structured data and Wave Invasion (a
-  new release rides its lane's Record Ships and the Mothership's panels; the newest is the
-  premiere on the title screen) all derive from the collection.
+  The home page (the newest release is its premiere), the poster wall, counts, the classical
+  series, sitemap, structured data and Wave Invasion (a new release rides its lane's Record
+  Ships and the Mothership's panels; the newest is the premiere on the title screen) all derive
+  from the collection.
 - **Remove a release:** delete the JSON, the cover and any `hd/` copy. `npm test` fails if a
   page in `dist/music/` has no release file.
 - **Add a lane:** a name, letter, blurb and color in `LANES`, and the name in the schema
@@ -79,7 +87,7 @@ edit sticks.
 - **Pull the live list:** open `https://soundcloud.com/chrisgwim/tracks`, read `client_id`
   and the user id from `window.__sc_hydration`, then call
   `https://api-v2.soundcloud.com/users/<id>/tracks?client_id=<id>&limit=100&linked_partitioning=1`.
-- **Design tokens:** `src/styles/tokens.css`. The home page has its own, at the top of
+- **Design tokens:** `src/styles/tokens.css`. Wave Invasion has its own, at the top of
   `src/styles/invasion.css`, and shares no stylesheet with the other pages. The SoundCloud
   embed color is the `ACCENT_HEX` constant in `src/lib/releases.ts`; keep it in sync with
   `--accent`.
@@ -119,9 +127,10 @@ refuses, no third-party host in the build, no debug handle in production code.
 
 Published site 1 GB, source repository 1 GB (recommended), bandwidth 100 GB a month (soft),
 10 builds an hour (soft), 10 minutes per deployment. The site is about 9 MB; a first visit to
-the home page is about 0.9 MB on a phone and 1 MB on a desktop (measured 2026-10-05: 160 KB
-of script, 90 KB of fonts, the rest cover art). `npm test` fails long before any limit: `dist/` and `public/`
-over 250 MB, any single file over 5 MB, the home page's code over 300 KB gzipped.
+Wave Invasion is about 0.9 MB on a phone and 1 MB on a desktop (measured 2026-10-05, when it
+was the home page: 160 KB of script, 90 KB of fonts, the rest cover art). `npm test` fails long
+before any limit: `dist/` and `public/` over 250 MB, any single file over 5 MB, the game's code
+over 300 KB gzipped, the home page's code over 60 KB gzipped.
 
 ## Commands
 

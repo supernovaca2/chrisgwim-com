@@ -15,12 +15,14 @@ interface Props {
   ogImage?: string;
   /** Extra JSON-LD for the page (a MusicRecording on release pages). */
   jsonLd?: Record<string, unknown>;
-  /** Which nav item is current. The home page (Wave Invasion) does not use this layout. */
-  current?: 'music' | 'story';
+  /** Which nav item is current. Wave Invasion (/play/) does not use this layout. */
+  current?: 'home' | 'music' | 'story';
   /** Keep the page out of search results (the 404). */
   noindex?: boolean;
+  /** The Lunthra card before the footer. The home page turns it off: it carries the same link itself. */
+  studio?: boolean;
 }
-const { title, description, ogImage, jsonLd, current, noindex = false } = Astro.props;
+const { title, description, ogImage, jsonLd, current, noindex = false, studio = true } = Astro.props;
 const releases = await getReleases();
 ---
 <!doctype html>
@@ -34,7 +36,7 @@ const releases = await getReleases();
     <main id="main">
       <slot />
     </main>
-    <Studio />
+    {studio && <Studio />}
     <footer class="footer">
       <div class="wrap">
         <p class="billing">
